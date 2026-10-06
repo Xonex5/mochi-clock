@@ -1,7 +1,7 @@
 import QtQuick
 import qs.island
 
-// Activité présentée sur l'îlot central quand le minuteur se termine
+// Island banner displayed when a timer finishes
 Item {
     id: root
 
@@ -28,7 +28,7 @@ Item {
             spacing: 1
 
             Text {
-                text: root.payload.title ?? "Minuteur terminé !"
+                text: root.payload.title ?? "Timer finished!"
                 color: Theme.foreground
                 font.pixelSize: Theme.textBody
                 font.family: Theme.fontFamily

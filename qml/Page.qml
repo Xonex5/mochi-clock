@@ -1,12 +1,13 @@
 import QtQuick
 import qs.island
+import "ClockHelper.js" as ClockHelper
 
-// Vue Page dédiée dans le Hub pour Chrono
+// Dedicated Hub Page view for Chrono (Clock, Stopwatch, and Timer)
 Item {
     id: root
 
     property var payload: null
-    readonly property string mode: payload?.mode ?? "clock"
+    readonly property string mode: payload?.mode ?? "timer"
     readonly property var clock: payload?.clock ?? ({})
     readonly property var stopwatch: payload?.stopwatch ?? ({})
     readonly property var timer: payload?.timer ?? ({})
@@ -15,11 +16,20 @@ Item {
     implicitWidth: 800
     implicitHeight: 380
 
+    function startTimerWithText(text) {
+        const secs = ClockHelper.parseDuration(text);
+        if (secs && secs > 0) {
+            Daemon.command("chrono", "timer_start", [`${secs}s`]);
+            return true;
+        }
+        return false;
+    }
+
     Column {
         anchors.fill: parent
         spacing: 16
 
-        // Barre d'onglets de navigation
+        // Tab bar navigation
         Segmented {
             id: nav
 
@@ -28,15 +38,15 @@ Item {
             height: 38
             color: Theme.raised
             options: [
-                { "value": "clock", "label": "Horloge", "icon": "clock" },
-                { "value": "stopwatch", "label": "Chronomètre", "icon": "bolt" },
-                { "value": "timer", "label": "Minuteur", "icon": "bell" }
+                { "value": "clock", "label": "Clock", "icon": "clock" },
+                { "value": "stopwatch", "label": "Stopwatch", "icon": "bolt" },
+                { "value": "timer", "label": "Timer", "icon": "bell" }
             ]
             current: root.mode
             onPicked: value => Daemon.command("chrono", "mode", [value])
         }
 
-        // ================= VUE HORLOGE =================
+        // ================= CLOCK VIEW =================
         Item {
             visible: root.mode === "clock"
             width: parent.width
@@ -46,7 +56,7 @@ Item {
                 anchors.centerIn: parent
                 spacing: 48
 
-                // Heure et date
+                // Time and date display
                 Column {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 8
@@ -68,7 +78,7 @@ Item {
                     }
                 }
 
-                // Progression de la journée
+                // Day progress card
                 Rectangle {
                     anchors.verticalCenter: parent.verticalCenter
                     width: 220
@@ -81,20 +91,22 @@ Item {
                         spacing: 10
                         width: parent.width - 28
 
-                        Row {
+                        Item {
                             width: parent.width
+                            height: 20
 
                             Text {
-                                text: "Journée écoulée"
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "Day elapsed"
                                 color: Theme.muted
                                 font.pixelSize: Theme.textLabel
                                 font.family: Theme.fontFamily
                             }
 
-                            Item { width: 1; height: 1; Layout.fillWidth: true }
-
                             Text {
                                 anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
                                 text: `${Math.round((root.clock.day_progress ?? 0) * 100)}%`
                                 color: Theme.accent
                                 font.pixelSize: Theme.textLabel
@@ -113,7 +125,7 @@ Item {
             }
         }
 
-        // ================= VUE CHRONOMÈTRE =================
+        // ================= STOPWATCH VIEW =================
         Item {
             visible: root.mode === "stopwatch"
             width: parent.width
@@ -123,9 +135,9 @@ Item {
                 anchors.fill: parent
                 spacing: 24
 
-                // Colonne principale : affichage du temps et contrôles
+                // Controls and big time
                 Column {
-                    width: parent.width * 0.48
+                    width: (parent.width - 24) * 0.48
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 18
 
@@ -145,7 +157,7 @@ Item {
 
                         Button {
                             visible: !root.stopwatch.running
-                            text: "Démarrer"
+                            text: "Start"
                             icon: "play"
                             tone: "accent"
                             onClicked: Daemon.command("chrono", "stopwatch_start", [])
@@ -153,7 +165,7 @@ Item {
 
                         Button {
                             visible: root.stopwatch.running
-                            text: root.stopwatch.paused ? "Reprendre" : "Pause"
+                            text: root.stopwatch.paused ? "Resume" : "Pause"
                             icon: root.stopwatch.paused ? "play" : "pause"
                             tone: root.stopwatch.paused ? "accent" : "neutral"
                             onClicked: Daemon.command("chrono", "stopwatch_pause", [])
@@ -161,7 +173,7 @@ Item {
 
                         Button {
                             visible: root.stopwatch.running && !root.stopwatch.paused
-                            text: "Tour"
+                            text: "Lap"
                             icon: "plus"
                             tone: "neutral"
                             onClicked: Daemon.command("chrono", "stopwatch_lap", [])
@@ -169,7 +181,7 @@ Item {
 
                         Button {
                             visible: root.stopwatch.running
-                            text: "Réinitialiser"
+                            text: "Reset"
                             icon: "stop"
                             tone: "danger"
                             onClicked: Daemon.command("chrono", "stopwatch_reset", [])
@@ -177,10 +189,10 @@ Item {
                     }
                 }
 
-                // Colonne secondaire : Liste des tours
+                // Recorded laps card
                 Rectangle {
-                    width: parent.width * 0.48
-                    height: parent.height - 20
+                    width: (parent.width - 24) * 0.52
+                    height: parent.height - 10
                     anchors.verticalCenter: parent.verticalCenter
                     radius: Theme.radiusLarge
                     color: Theme.surface
@@ -192,7 +204,7 @@ Item {
                         spacing: 8
 
                         Text {
-                            text: `Tours enregistrés (${root.laps.length})`
+                            text: `Recorded laps (${root.laps.length})`
                             color: Theme.muted
                             font.pixelSize: Theme.textCaption
                             font.family: Theme.fontFamily
@@ -203,7 +215,7 @@ Item {
                             visible: root.laps.length === 0
                             anchors.horizontalCenter: parent.horizontalCenter
                             y: 80
-                            text: "Aucun tour enregistré"
+                            text: "No laps recorded"
                             color: Theme.muted
                             font.pixelSize: Theme.textLabel
                             font.family: Theme.fontFamily
@@ -223,42 +235,43 @@ Item {
                                 radius: Theme.radiusSmall
                                 color: Theme.raised
 
-                                Row {
+                                Item {
                                     anchors.fill: parent
                                     anchors.leftMargin: 12
                                     anchors.rightMargin: 12
 
                                     Text {
+                                        anchors.left: parent.left
                                         anchors.verticalCenter: parent.verticalCenter
-                                        text: `Tour ${modelData.index}`
+                                        text: `Lap ${modelData.index}`
                                         color: Theme.muted
                                         font.pixelSize: Theme.textLabel
                                         font.family: Theme.fontFamily
                                     }
 
-                                    Item { width: 1; height: 1; Layout.fillWidth: true }
-
-                                    Text {
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        anchors.right: totalText.left
-                                        anchors.rightMargin: 16
-                                        text: `+${modelData.formatted_split}`
-                                        color: Theme.accent
-                                        font.pixelSize: Theme.textLabel
-                                        font.family: Theme.fontFamily
-                                        font.features: { "tnum": 1 }
-                                    }
-
-                                    Text {
-                                        id: totalText
-                                        anchors.verticalCenter: parent.verticalCenter
+                                    Row {
                                         anchors.right: parent.right
-                                        text: modelData.formatted_total
-                                        color: Theme.foreground
-                                        font.pixelSize: Theme.textLabel
-                                        font.family: Theme.fontFamily
-                                        font.weight: Font.DemiBold
-                                        font.features: { "tnum": 1 }
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        spacing: 16
+
+                                        Text {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            text: `+${modelData.formatted_split}`
+                                            color: Theme.accent
+                                            font.pixelSize: Theme.textLabel
+                                            font.family: Theme.fontFamily
+                                            font.features: { "tnum": 1 }
+                                        }
+
+                                        Text {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            text: modelData.formatted_total
+                                            color: Theme.foreground
+                                            font.pixelSize: Theme.textLabel
+                                            font.family: Theme.fontFamily
+                                            font.weight: Font.DemiBold
+                                            font.features: { "tnum": 1 }
+                                        }
                                     }
                                 }
                             }
@@ -268,7 +281,7 @@ Item {
             }
         }
 
-        // ================= VUE MINUTEUR =================
+        // ================= TIMER VIEW =================
         Item {
             visible: root.mode === "timer"
             width: parent.width
@@ -278,7 +291,7 @@ Item {
                 anchors.centerIn: parent
                 spacing: 36
 
-                // Cadran avec anneau de compte à rebours
+                // Circular countdown ring
                 Item {
                     width: 140
                     height: 140
@@ -307,7 +320,7 @@ Item {
 
                         Text {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: root.timer.paused ? "En pause" : (root.timer.running ? "En cours" : "Prêt")
+                            text: root.timer.paused ? "Paused" : (root.timer.running ? "Running" : "Ready")
                             color: Theme.muted
                             font.pixelSize: Theme.textCaption
                             font.family: Theme.fontFamily
@@ -315,51 +328,115 @@ Item {
                     }
                 }
 
-                // Contrôles et Préréglages
+                // Controls, Input and Presets
                 Column {
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 14
+                    width: 360
 
-                    // Boutons de contrôle
+                    // Intuitive text input field to type duration
                     Row {
+                        width: parent.width
                         spacing: 8
 
+                        Rectangle {
+                            width: parent.width - (root.timer.running ? 0 : pageStartBtn.width + 8)
+                            height: 38
+                            radius: 19
+                            color: Theme.surface
+
+                            Symbol {
+                                id: pageInputIcon
+                                x: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                name: "bell"
+                                size: 14
+                                color: Theme.muted
+                            }
+
+                            TextInput {
+                                id: pageTimerInput
+                                anchors.left: pageInputIcon.right
+                                anchors.leftMargin: 8
+                                anchors.right: parent.right
+                                anchors.rightMargin: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                color: Theme.foreground
+                                selectionColor: Theme.accent
+                                font.pixelSize: Theme.textBody
+                                font.family: Theme.fontFamily
+                                clip: true
+                                onAccepted: {
+                                    if (root.startTimerWithText(text)) {
+                                        text = "";
+                                    }
+                                }
+
+                                Text {
+                                    visible: pageTimerInput.text === ""
+                                    text: "Type duration (e.g. 5m, 90s, 1h 30m, 10:00)..."
+                                    color: Theme.muted
+                                    font: pageTimerInput.font
+                                }
+                            }
+                        }
+
                         Button {
-                            text: root.timer.running ? (root.timer.paused ? "Reprendre" : "Pause") : "Démarrer"
-                            icon: (root.timer.running && !root.timer.paused) ? "pause" : "play"
+                            id: pageStartBtn
+                            visible: !root.timer.running
+                            text: "Start"
+                            icon: "play"
                             tone: "accent"
+                            onClicked: {
+                                if (pageTimerInput.text !== "") {
+                                    if (root.startTimerWithText(pageTimerInput.text)) {
+                                        pageTimerInput.text = "";
+                                    }
+                                } else {
+                                    Daemon.command("chrono", "timer_start", []);
+                                }
+                            }
+                        }
+                    }
+
+                    // Action buttons when running
+                    Row {
+                        spacing: 8
+                        visible: root.timer.running
+
+                        Button {
+                            text: root.timer.paused ? "Resume" : "Pause"
+                            icon: root.timer.paused ? "play" : "pause"
+                            tone: root.timer.paused ? "accent" : "neutral"
                             onClicked: Daemon.command("chrono", "timer_pause", [])
                         }
 
                         Button {
-                            visible: root.timer.running
                             text: "+1 min"
                             tone: "neutral"
-                            onClicked: Daemon.command("chrono", "timer_add", ["1"])
+                            onClicked: Daemon.command("chrono", "timer_add", ["1m"])
                         }
 
                         Button {
-                            visible: root.timer.running
                             text: "+5 min"
                             tone: "neutral"
-                            onClicked: Daemon.command("chrono", "timer_add", ["5"])
+                            onClicked: Daemon.command("chrono", "timer_add", ["5m"])
                         }
 
                         Button {
-                            visible: root.timer.running
-                            text: "Arrêter"
+                            text: "Stop"
                             icon: "stop"
                             tone: "danger"
                             onClicked: Daemon.command("chrono", "timer_stop", [])
                         }
                     }
 
-                    // Grille de préréglages
+                    // Quick presets grid
                     Column {
                         spacing: 6
 
                         Text {
-                            text: "Préréglages rapides :"
+                            text: "Quick presets:"
                             color: Theme.muted
                             font.pixelSize: Theme.textCaption
                             font.family: Theme.fontFamily
@@ -371,14 +448,14 @@ Item {
 
                             Repeater {
                                 model: [
-                                    { "label": "1 min", "val": "1" },
-                                    { "label": "3 min", "val": "3" },
-                                    { "label": "5 min", "val": "5" },
-                                    { "label": "10 min", "val": "10" },
-                                    { "label": "15 min", "val": "15" },
-                                    { "label": "20 min", "val": "20" },
-                                    { "label": "25 min (Pomodoro)", "val": "25" },
-                                    { "label": "30 min", "val": "30" }
+                                    { "label": "1 min", "val": "1m" },
+                                    { "label": "3 min", "val": "3m" },
+                                    { "label": "5 min", "val": "5m" },
+                                    { "label": "10 min", "val": "10m" },
+                                    { "label": "15 min", "val": "15m" },
+                                    { "label": "20 min", "val": "20m" },
+                                    { "label": "25 min (Pomodoro)", "val": "25m" },
+                                    { "label": "30 min", "val": "30m" }
                                 ]
 
                                 Button {

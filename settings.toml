@@ -1,24 +1,24 @@
-# Chrono: Horloge, Chronomètre et Minuteur pour Mochi.
-# Copiez cette section dans ~/.config/mochi/config.toml sous [module.chrono].
+# Chrono: Clock, Stopwatch, and Countdown Timer for Mochi.
+# Copy this section into ~/.config/mochi/config.toml under [module.chrono].
 
 [module.chrono]
-# Durée par défaut du minuteur (en minutes) si non spécifiée.
+# Default timer duration in minutes when started without arguments.
 # default_timer_minutes = 5
 
-# Format de l'heure ("%H:%M:%S", "%H:%M", etc.).
+# Clock time format ("%H:%M:%S", "%H:%M", etc.).
 # clock_format = "%H:%M:%S"
 
-# Affichage 24h (true) ou 12h AM/PM (false).
+# 24-hour clock mode (true) or 12-hour AM/PM (false).
 # clock_24h = true
 
-# Emplacement de la bulle près de l'îlot : "CenterRight", "CenterLeft", "Right", "Left".
+# Area next to the island for the bubble: "CenterRight", "CenterLeft", "Right", "Left".
 # area = "CenterRight"
 
-# Afficher une bulle sur l'îlot lorsqu'un minuteur est actif ou en pause.
+# Show a bubble on the island when a timer is running or paused.
 # timer_bubble = true
 
-# Afficher une bulle sur l'îlot lorsque le chronomètre est actif.
+# Show a bubble on the island when the stopwatch is running.
 # stopwatch_bubble = true
 
-# Jouer une alerte sonore lorsque le minuteur se termine.
+# Play an audio alert sound when the timer finishes.
 # sound = true

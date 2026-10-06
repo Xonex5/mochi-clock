@@ -1,31 +1,31 @@
 # Chrono
 
-Plugin tout-en-un pour Mochi réunissant une horloge, un chronomètre et un minuteur.
+All-in-one Clock, Stopwatch, and Countdown Timer plugin for Mochi.
 
-## Fonctionnalités
+## Features
 
-- Horloge : affiche l'heure courante (format 24h ou 12h) avec les secondes, la date complète et le pourcentage de la journée écoulée.
-- Chronomètre : mesure le temps au dixième de seconde près avec enregistrement des tours (split et cumul).
-- Minuteur : compte à rebours paramétrable avec anneau de progression, boutons de préréglages (1m, 3m, 5m, 10m, 15m, 25m), alertes sur l'îlot central et notification sonore.
-- Bulle dynamique : affiche le décompte ou le chrono actif à côté de l'îlot. Cliquer sur la bulle met en pause ou reprend le décompte.
-- Intégration Hub et bureau : offre une carte rétractable, une page dédiée dans le Hub et un widget pour le bureau.
+- Clock: Real-time clock display with seconds, full date, and day progress tracking (available in the dedicated Chrono page).
+- Stopwatch: Precise timer with tenth-of-a-second resolution and lap tracking (split and total time).
+- Countdown Timer: Customizable countdown timer with intuitive natural text input (e.g. `5m`, `90s`, `1h 30m`, `10:00`), circular progress ring, one-click presets, audio notification, and island activity alerts.
+- Dynamic Bubble: Shows remaining time or active stopwatch next to the island pill. Clicking the bubble toggles pause/resume.
+- Hub & Desktop Integration: Compact interactive Hub card and desktop widget (Timer and Stopwatch), plus a full-featured Hub page.
 
 ## Installation
 
-Dans `~/.config/mochi/plugins.toml`, ajoutez :
+In `~/.config/mochi/plugins.toml`:
 
 ```toml
 [plugins.chrono]
 source = "path:plugins/chrono"
 ```
 
-Compilez et activez le plugin :
+Build and install the plugin:
 
 ```sh
 mochi plugins install chrono
 ```
 
-Dans `~/.config/mochi/config.toml`, ajoutez `"chrono"` à la liste des modules :
+In `~/.config/mochi/config.toml`, add `"chrono"` to `modules`:
 
 ```toml
 modules = [
@@ -37,55 +37,58 @@ modules = [
 ]
 ```
 
-Rechargez le daemon :
+Reload Mochi:
 
 ```sh
 mochi reload
 ```
 
-## Commandes IPC
+## IPC Commands
 
-Toutes les actions sont accessibles via la ligne de commande `mochi ipc chrono` :
+Run actions from your terminal with `mochi ipc chrono`:
 
 ```sh
-# État global
+# Current status
 mochi ipc chrono status
 
-# Basculer l'affichage (clock, stopwatch, timer)
+# Switch active mode (clock, stopwatch, timer)
 mochi ipc chrono mode timer
 
-# Minuteur
-mochi ipc chrono timer_start 10        # Démarre un minuteur de 10 minutes
-mochi ipc chrono timer_pause           # Met en pause ou reprend
-mochi ipc chrono timer_add 5           # Ajoute 5 minutes
-mochi ipc chrono timer_stop            # Arrête le minuteur
+# Countdown Timer (supports intuitive duration syntax)
+mochi ipc chrono timer_start "10m"       # 10 minutes
+mochi ipc chrono timer_start "90s"       # 90 seconds
+mochi ipc chrono timer_start "1h 30m"    # 1 hour 30 minutes
+mochi ipc chrono timer_start "05:00"     # 5 minutes
+mochi ipc chrono timer_pause             # Pause or resume
+mochi ipc chrono timer_add "5m"          # Add 5 minutes
+mochi ipc chrono timer_stop              # Stop and reset
 
-# Chronomètre
-mochi ipc chrono stopwatch_start       # Démarre le chronomètre
-mochi ipc chrono stopwatch_lap         # Enregistre un tour
-mochi ipc chrono stopwatch_pause       # Pause ou reprise
-mochi ipc chrono stopwatch_reset       # Remet à zéro
+# Stopwatch
+mochi ipc chrono stopwatch_start         # Start stopwatch
+mochi ipc chrono stopwatch_lap           # Record a lap
+mochi ipc chrono stopwatch_pause         # Pause or resume
+mochi ipc chrono stopwatch_reset         # Reset stopwatch
 ```
 
 ## Configuration
 
-Dans `~/.config/mochi/config.toml` :
+In `~/.config/mochi/config.toml`:
 
 ```toml
 [module.chrono]
-# Durée par défaut du minuteur (en minutes)
+# Default timer duration in minutes
 default_timer_minutes = 5
 
-# Format de l'heure
+# Clock time format
 clock_format = "%H:%M:%S"
 
-# Emplacement de la bulle près de l'îlot (CenterRight, CenterLeft, Right, Left)
+# Island bubble position (CenterRight, CenterLeft, Right, Left)
 area = "CenterRight"
 
-# Afficher la bulle pour le minuteur ou le chronomètre
+# Show bubble for timer or stopwatch
 timer_bubble = true
 stopwatch_bubble = true
 
-# Sonnerie de fin de minuteur
+# Sound alert when timer expires
 sound = true
 ```

@@ -2,7 +2,7 @@
 id = "chrono"
 name = "Chrono"
 version = "0.1.0"
-description = "Horloge, chronomètre et minuteur tout-en-un pour Mochi"
+description = "All-in-one clock, stopwatch, and timer for Mochi"
 authors = ["xo"]
 api = 1
 
@@ -15,53 +15,52 @@ asset = "chrono-{version}-{arch}-linux.tar.gz"
 
 [[actions]]
 name = "status"
-description = "Affiche l'état de l'horloge, du chronomètre et du minuteur"
+description = "Show the status of the clock, stopwatch, and timer"
 
 [[actions]]
 name = "mode"
-description = "Bascule le mode d'affichage actif (clock, stopwatch, timer)"
+description = "Switch active view mode (clock, stopwatch, timer)"
 args = [
-    { name = "mode", description = "Le mode d'affichage", kind = "choice", choices = ["clock", "stopwatch", "timer"], optional = false }
+    { name = "mode", description = "View mode to display", kind = "choice", choices = ["clock", "stopwatch", "timer"], optional = false }
 ]
 
 [[actions]]
 name = "timer_start"
-description = "Démarre le minuteur"
+description = "Start the countdown timer with a duration"
 args = [
-    { name = "minutes", description = "Durée en minutes", kind = "int", optional = true },
-    { name = "seconds", description = "Secondes supplémentaires", kind = "int", optional = true }
+    { name = "duration", description = "Duration (e.g. 10m, 90s, 1h 30m, 05:00, or minutes)", kind = "string", optional = true }
 ]
 
 [[actions]]
 name = "timer_pause"
-description = "Met en pause ou reprend le minuteur"
+description = "Pause or resume the countdown timer"
 
 [[actions]]
 name = "timer_stop"
-description = "Arrête et réinitialise le minuteur"
+description = "Stop and reset the countdown timer"
 
 [[actions]]
 name = "timer_add"
-description = "Ajoute du temps au minuteur (en minutes)"
+description = "Add time to the timer"
 args = [
-    { name = "minutes", description = "Nombre de minutes à ajouter", kind = "int", optional = false }
+    { name = "duration", description = "Duration to add (e.g. 1m, 5m, 30s)", kind = "string", optional = false }
 ]
 
 [[actions]]
 name = "stopwatch_start"
-description = "Démarre le chronomètre"
+description = "Start the stopwatch"
 
 [[actions]]
 name = "stopwatch_pause"
-description = "Met en pause ou reprend le chronomètre"
+description = "Pause or resume the stopwatch"
 
 [[actions]]
 name = "stopwatch_reset"
-description = "Arrête et remet à zéro le chronomètre"
+description = "Stop and reset the stopwatch"
 
 [[actions]]
 name = "stopwatch_lap"
-description = "Enregistre un tour (lap) sur le chronomètre"
+description = "Record a lap on the stopwatch"
 
 [[contributions]]
 target = "hub"

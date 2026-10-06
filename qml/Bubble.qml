@@ -1,7 +1,7 @@
 import QtQuick
 import qs.island
 
-// La bulle affichée près de l'îlot pour le minuteur ou le chronomètre
+// Island bubble for active countdown timer or stopwatch
 Item {
     id: root
 
@@ -19,7 +19,7 @@ Item {
         anchors.centerIn: parent
         spacing: 6
 
-        // Anneau de compte à rebours pour le minuteur
+        // Countdown ring for timer
         Ring {
             visible: root.isTimer
             anchors.verticalCenter: parent.verticalCenter
@@ -30,7 +30,7 @@ Item {
             progress: root.payload.progress ?? 0
         }
 
-        // Symbole pour le chronomètre
+        // Icon for stopwatch
         Symbol {
             visible: !root.isTimer
             anchors.verticalCenter: parent.verticalCenter
@@ -39,7 +39,7 @@ Item {
             color: root.tint
         }
 
-        // Temps restant ou écoulé
+        // Time text
         Text {
             anchors.verticalCenter: parent.verticalCenter
             text: root.payload.text ?? "00:00"

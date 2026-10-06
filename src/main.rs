@@ -1,4 +1,4 @@
-//! Plugin Mochi Chrono : Horloge, Chronomètre et Minuteur tout-en-un.
+//! Chrono Mochi plugin: All-in-one Clock, Stopwatch, and Countdown Timer.
 
 use std::process::ExitCode;
 use std::time::Duration;
@@ -259,7 +259,7 @@ async fn run(mut ctx: ModuleCtx) -> Result<(), mochi_sdk::Error> {
     let default_min = settings.default_timer_minutes;
     let mut plugin = ChronoPlugin {
         settings,
-        mode: "clock".to_string(),
+        mode: "timer".to_string(),
         stopwatch: Stopwatch::new(),
         timer: Timer::new(default_min),
         active_bubble: None,
@@ -296,23 +296,23 @@ impl ChronoPlugin {
             "status" => {
                 let (time_str, date_str, _, _, _) = current_local_time(&self.settings.clock_format);
                 let sw_desc = if self.stopwatch.running {
-                    let state = if self.stopwatch.paused { "en pause" } else { "en cours" };
+                    let state = if self.stopwatch.paused { "paused" } else { "running" };
                     format!(
-                        "{} ({state}, {} tours)",
+                        "{} ({state}, {} laps)",
                         format_tenths(self.stopwatch.elapsed()),
                         self.stopwatch.laps.len()
                     )
                 } else {
-                    "arrêté".to_string()
+                    "idle".to_string()
                 };
                 let timer_desc = if self.timer.running {
-                    let state = if self.timer.paused { "en pause" } else { "en cours" };
-                    format!("{} restant ({state})", format_timer(self.timer.left))
+                    let state = if self.timer.paused { "paused" } else { "running" };
+                    format!("{} left ({state})", format_timer(self.timer.left))
                 } else {
-                    "arrêté".to_string()
+                    "idle".to_string()
                 };
                 command.answer(Ok(format!(
-                    "Horloge : {time_str} ({date_str})\nChronomètre : {sw_desc}\nMinuteur : {timer_desc}\nMode actif : {}",
+                    "Clock: {time_str} ({date_str})\nStopwatch: {sw_desc}\nTimer: {timer_desc}\nActive mode: {}",
                     self.mode
                 )));
             }
@@ -322,18 +322,25 @@ impl ChronoPlugin {
                     self.publish(ctx);
                     command.reply(Ok(()));
                 } else {
-                    command.reply(Err("mode requis (clock, stopwatch, timer)".into()));
+                    command.reply(Err("mode required (clock, stopwatch, timer)".into()));
                 }
             }
             "timer_start" => {
-                let minutes = command.args.int("minutes").map(|m| m.max(0) as u64);
-                let seconds = command.args.int("seconds").map(|s| s.max(0) as u64);
-                let duration = match (minutes, seconds) {
-                    (Some(m), Some(s)) if m > 0 || s > 0 => Duration::from_secs(m * 60 + s),
-                    (Some(m), None) if m > 0 => Duration::from_secs(m * 60),
-                    (None, Some(s)) if s > 0 => Duration::from_secs(s),
-                    _ => Duration::from_secs(self.settings.default_timer_minutes * 60),
+                let dur_str = command.args.str("duration").map(|s| s.to_string());
+                let duration = if let Some(ref dur) = dur_str {
+                    match parse_duration(dur) {
+                        Some(d) => d,
+                        None => {
+                            command.reply(Err(format!(
+                                "invalid duration '{dur}': use e.g. 5m, 90s, 1h 30m, 10:00"
+                            )));
+                            return;
+                        }
+                    }
+                } else {
+                    Duration::from_secs(self.settings.default_timer_minutes * 60)
                 };
+
                 self.mode = "timer".to_string();
                 self.timer.start(duration);
                 self.sync_bubble(ctx);
@@ -353,14 +360,21 @@ impl ChronoPlugin {
                 command.reply(Ok(()));
             }
             "timer_add" => {
-                if let Some(minutes) = command.args.int("minutes") {
-                    let extra = Duration::from_secs((minutes.max(1) as u64) * 60);
-                    self.timer.add(extra);
-                    self.sync_bubble(ctx);
-                    self.publish(ctx);
-                    command.reply(Ok(()));
+                let dur_str = command.args.str("duration").map(|s| s.to_string());
+                if let Some(ref dur) = dur_str {
+                    match parse_duration(dur) {
+                        Some(extra) => {
+                            self.timer.add(extra);
+                            self.sync_bubble(ctx);
+                            self.publish(ctx);
+                            command.reply(Ok(()));
+                        }
+                        None => command.reply(Err(format!(
+                            "invalid duration '{dur}': use e.g. 1m, 5m, 30s"
+                        ))),
+                    }
                 } else {
-                    command.reply(Err("spécifiez les minutes à ajouter".into()));
+                    command.reply(Err("duration argument required".into()));
                 }
             }
             "stopwatch_start" => {
@@ -388,10 +402,10 @@ impl ChronoPlugin {
                     self.publish(ctx);
                     command.reply(Ok(()));
                 } else {
-                    command.reply(Err("le chronomètre n'est pas actif".into()));
+                    command.reply(Err("stopwatch is not running".into()));
                 }
             }
-            other => command.reply(Err(format!("action inconnue: {other}"))),
+            other => command.reply(Err(format!("unknown action: {other}"))),
         }
     }
 
@@ -414,14 +428,14 @@ impl ChronoPlugin {
             let duration_text = if total_mins > 0 {
                 format!("{total_mins} min")
             } else {
-                format!("{} s", self.timer.total.as_secs())
+                format!("{} sec", self.timer.total.as_secs())
             };
             ctx.present(
                 ActivitySpec::new("Done")
                     .priority(Priority::HIGH)
                     .timeout(Duration::from_secs(8))
                     .payload(json!({
-                        "title": "Minuteur terminé !",
+                        "title": "Timer finished!",
                         "duration": duration_text,
                     })),
             );
@@ -565,7 +579,7 @@ fn current_local_time(format: &str) -> (String, String, u32, u32, u32) {
         };
 
         let mut date_buf = [0u8; 128];
-        let d_fmt = std::ffi::CString::new("%A %d %B %Y").unwrap();
+        let d_fmt = std::ffi::CString::new("%A, %B %e, %Y").unwrap();
         let d_len = libc::strftime(
             date_buf.as_mut_ptr() as *mut libc::c_char,
             date_buf.len(),
@@ -612,6 +626,70 @@ fn format_timer(d: Duration) -> String {
     } else {
         format!("{mins:02}:{secs:02}")
     }
+}
+
+fn parse_duration(input: &str) -> Option<Duration> {
+    let s = input.trim().to_lowercase();
+    if s.is_empty() {
+        return None;
+    }
+
+    if s.contains(':') {
+        let parts: Vec<&str> = s.split(':').collect();
+        if parts.len() == 2 {
+            let m: u64 = parts[0].trim().parse().ok()?;
+            let sec: u64 = parts[1].trim().parse().ok()?;
+            return Some(Duration::from_secs(m * 60 + sec));
+        } else if parts.len() == 3 {
+            let h: u64 = parts[0].trim().parse().ok()?;
+            let m: u64 = parts[1].trim().parse().ok()?;
+            let sec: u64 = parts[2].trim().parse().ok()?;
+            return Some(Duration::from_secs(h * 3600 + m * 60 + sec));
+        }
+    }
+
+    let mut total_secs: f64 = 0.0;
+    let mut matched = false;
+    let mut num_str = String::new();
+
+    for c in s.chars() {
+        if c.is_ascii_digit() || c == '.' {
+            num_str.push(c);
+        } else if c.is_alphabetic() {
+            if !num_str.is_empty() {
+                if let Ok(val) = num_str.parse::<f64>() {
+                    num_str.clear();
+                    match c {
+                        'h' => {
+                            total_secs += val * 3600.0;
+                            matched = true;
+                        }
+                        'm' => {
+                            total_secs += val * 60.0;
+                            matched = true;
+                        }
+                        's' => {
+                            total_secs += val;
+                            matched = true;
+                        }
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+
+    if matched {
+        return Some(Duration::from_secs_f64(total_secs.max(1.0)));
+    }
+
+    if let Ok(num) = s.parse::<f64>() {
+        if num > 0.0 {
+            return Some(Duration::from_secs_f64((num * 60.0).max(1.0)));
+        }
+    }
+
+    None
 }
 
 fn trigger_alarm() {
