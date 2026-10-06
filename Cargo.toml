@@ -1,7 +1,7 @@
 [package]
 name = "mochi-plugin-chrono"
-description = "Plugin Mochi 3-en-1 : Horloge, Chronomètre et Minuteur"
-version = "0.1.0"
+description = "All-in-one Clock, Stopwatch, and Timer for Mochi"
+version = "0.2.0"
 edition = "2024"
 license = "MIT"
 publish = false

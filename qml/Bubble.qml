@@ -49,5 +49,16 @@ Item {
             font.weight: Font.DemiBold
             font.features: { "tnum": 1 }
         }
+
+        // Multi-timer badge (+1, +2...)
+        Text {
+            visible: root.isTimer && (root.payload.count ?? 1) > 1
+            anchors.verticalCenter: parent.verticalCenter
+            text: `+${(root.payload.count ?? 1) - 1}`
+            color: Theme.muted
+            font.pixelSize: Theme.textCaption * 0.85
+            font.family: Theme.fontFamily
+            font.weight: Font.Bold
+        }
     }
 }

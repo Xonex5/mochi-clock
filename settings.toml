@@ -22,3 +22,12 @@
 
 # Play an audio alert sound when the timer finishes.
 # sound = true
+
+# Alarm volume percentage (0 to 100).
+# alarm_volume = 80
+
+# Custom sound file path (defaults to standard system alarm).
+# sound_file = "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
+
+# Automatically pause playing media when a timer finishes.
+# pause_media = true

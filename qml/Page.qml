@@ -11,6 +11,8 @@ Item {
     readonly property var clock: payload?.clock ?? ({})
     readonly property var stopwatch: payload?.stopwatch ?? ({})
     readonly property var timer: payload?.timer ?? ({})
+    readonly property var activeTimers: timer.active_timers ?? []
+    readonly property int alarmVolume: timer.volume ?? 80
     readonly property var laps: stopwatch.laps ?? []
     readonly property var history: stopwatch.history ?? []
     readonly property var worldClocks: clock.world_clocks ?? ({})
@@ -47,12 +49,9 @@ Item {
     }
 
     function startTimerWithText(text) {
-        const secs = ClockHelper.parseDuration(text);
-        if (secs && secs > 0) {
-            Daemon.command("chrono", "timer_start", [`${secs}s`]);
-            return true;
-        }
-        return false;
+        if (!text || text.trim() === "") return false;
+        Daemon.command("chrono", "timer_start", [text.trim()]);
+        return true;
     }
 
     // Keyboard shortcuts for Stopwatch (only in this Page, not in Home)
@@ -411,21 +410,36 @@ Item {
                         anchors.margins: 12
                         spacing: 8
 
-                        // Sub-tabs: Current Laps vs History
-                        Row {
+                        // Sub-tabs: Current Laps vs History + Export
+                        Item {
                             width: parent.width
-                            spacing: 8
+                            height: 32
 
-                            Button {
-                                text: `Laps (${root.laps.length})`
-                                tone: root.stopwatchSubTab === "laps" ? "accent" : "ghost"
-                                onClicked: root.stopwatchSubTab = "laps"
+                            Row {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 8
+
+                                Button {
+                                    text: `Laps (${root.laps.length})`
+                                    tone: root.stopwatchSubTab === "laps" ? "accent" : "ghost"
+                                    onClicked: root.stopwatchSubTab = "laps"
+                                }
+
+                                Button {
+                                    text: "History"
+                                    tone: root.stopwatchSubTab === "history" ? "accent" : "ghost"
+                                    onClicked: root.stopwatchSubTab = "history"
+                                }
                             }
 
                             Button {
-                                text: "History"
-                                tone: root.stopwatchSubTab === "history" ? "accent" : "ghost"
-                                onClicked: root.stopwatchSubTab = "history"
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "Export"
+                                icon: "copy"
+                                tone: "ghost"
+                                onClicked: Daemon.command("chrono", "stopwatch_export", [])
                             }
                         }
 
@@ -575,66 +589,213 @@ Item {
             }
         }
 
-        // ================= TIMER VIEW (Clean 25 min & Intuitive Input) =================
+        // ================= TIMER VIEW (Multi-timers, Volume Control & Presets) =================
         Item {
             visible: root.mode === "timer"
             width: parent.width
             height: parent.height - nav.height - 12
 
             Row {
-                anchors.centerIn: parent
-                spacing: 36
+                anchors.fill: parent
+                spacing: 24
 
-                // Circular countdown ring
+                // Left Column: Big Ring or Multi-Timer List
                 Item {
-                    width: 140
-                    height: 140
-                    anchors.verticalCenter: parent.verticalCenter
+                    width: (parent.width - 24) * 0.46
+                    height: parent.height
 
-                    Ring {
-                        anchors.fill: parent
-                        line: 6
-                        color: root.timer.paused ? Theme.muted : Theme.accent
-                        progress: root.timer.running ? (root.timer.progress ?? 1) : 1
-                    }
-
+                    // Single Timer or Idle State
                     Column {
+                        visible: root.activeTimers.length <= 1
                         anchors.centerIn: parent
-                        spacing: 2
+                        spacing: 16
 
-                        Text {
+                        Item {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: root.timer.running ? (root.timer.formatted ?? "00:00") : `${root.timer.default_minutes ?? 5}:00`
-                            color: Theme.foreground
-                            font.pixelSize: Theme.textTitle
-                            font.family: Theme.fontFamily
-                            font.weight: Font.Bold
-                            font.features: { "tnum": 1 }
+                            width: 140
+                            height: 140
+
+                            Ring {
+                                anchors.fill: parent
+                                line: 6
+                                color: root.timer.paused ? Theme.muted : Theme.accent
+                                progress: root.timer.running ? (root.timer.progress ?? 1) : 1
+                            }
+
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: 2
+
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: root.timer.running ? (root.timer.formatted ?? "00:00") : `${root.timer.default_minutes ?? 5}:00`
+                                    color: Theme.foreground
+                                    font.pixelSize: Theme.textTitle
+                                    font.family: Theme.fontFamily
+                                    font.weight: Font.Bold
+                                    font.features: { "tnum": 1 }
+                                }
+
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: {
+                                        if (!root.timer.running) return "Ready";
+                                        if (root.timer.label && root.timer.label !== "") return root.timer.label;
+                                        return root.timer.paused ? "Paused" : "Running";
+                                    }
+                                    color: Theme.muted
+                                    font.pixelSize: Theme.textCaption
+                                    font.family: Theme.fontFamily
+                                    elide: Text.ElideRight
+                                }
+                            }
                         }
 
-                        Text {
+                        // Action buttons when running
+                        Row {
                             anchors.horizontalCenter: parent.horizontalCenter
-                            text: root.timer.paused ? "Paused" : (root.timer.running ? "Running" : "Ready")
-                            color: Theme.muted
-                            font.pixelSize: Theme.textCaption
-                            font.family: Theme.fontFamily
+                            spacing: 8
+                            visible: root.timer.running
+
+                            Button {
+                                text: root.timer.paused ? "Resume" : "Pause"
+                                icon: root.timer.paused ? "play" : "pause"
+                                tone: root.timer.paused ? "accent" : "neutral"
+                                onClicked: Daemon.command("chrono", "timer_pause", [])
+                            }
+
+                            Button {
+                                text: "+1m"
+                                tone: "neutral"
+                                onClicked: Daemon.command("chrono", "timer_add", ["1m"])
+                            }
+
+                            Button {
+                                text: "+5m"
+                                tone: "neutral"
+                                onClicked: Daemon.command("chrono", "timer_add", ["5m"])
+                            }
+
+                            Button {
+                                text: "Stop"
+                                icon: "stop"
+                                tone: "danger"
+                                onClicked: Daemon.command("chrono", "timer_stop", [])
+                            }
+                        }
+                    }
+
+                    // Multi-Timer List (when 2 or more timers are active)
+                    Item {
+                        visible: root.activeTimers.length > 1
+                        anchors.fill: parent
+
+                        Column {
+                            anchors.fill: parent
+                            spacing: 8
+
+                            Text {
+                                text: `Active Timers (${root.activeTimers.length})`
+                                color: Theme.foreground
+                                font.pixelSize: Theme.textBody
+                                font.family: Theme.fontFamily
+                                font.weight: Font.DemiBold
+                            }
+
+                            ListView {
+                                width: parent.width
+                                height: parent.height - 30
+                                clip: true
+                                spacing: 6
+                                model: root.activeTimers
+
+                                delegate: Rectangle {
+                                    width: parent.width
+                                    height: 48
+                                    radius: Theme.radiusSmall
+                                    color: Theme.raised
+
+                                    Row {
+                                        anchors.fill: parent
+                                        anchors.margins: 8
+                                        spacing: 10
+
+                                        Ring {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            width: 26
+                                            height: 26
+                                            line: 3
+                                            color: modelData.paused ? Theme.muted : Theme.accent
+                                            progress: modelData.progress ?? 0
+                                        }
+
+                                        Column {
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            width: parent.width - 26 - 150 - parent.spacing * 2
+                                            spacing: 1
+
+                                            Text {
+                                                text: modelData.label && modelData.label !== "" ? modelData.label : "Timer"
+                                                color: Theme.foreground
+                                                font.pixelSize: Theme.textBody
+                                                font.family: Theme.fontFamily
+                                                font.weight: Font.DemiBold
+                                                elide: Text.ElideRight
+                                            }
+
+                                            Text {
+                                                text: modelData.formatted ?? "00:00"
+                                                color: Theme.accent
+                                                font.pixelSize: Theme.textCaption
+                                                font.family: Theme.fontFamily
+                                                font.weight: Font.Bold
+                                                font.features: { "tnum": 1 }
+                                            }
+                                        }
+
+                                        Row {
+                                            anchors.right: parent.right
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            spacing: 4
+
+                                            Button {
+                                                text: "+1m"
+                                                tone: "ghost"
+                                                onClicked: Daemon.command("chrono", "timer_add", ["1m", modelData.id])
+                                            }
+
+                                            Button {
+                                                icon: modelData.paused ? "play" : "pause"
+                                                tone: modelData.paused ? "accent" : "neutral"
+                                                onClicked: Daemon.command("chrono", "timer_pause", [modelData.id])
+                                            }
+
+                                            Button {
+                                                icon: "close"
+                                                tone: "ghost"
+                                                onClicked: Daemon.command("chrono", "timer_stop", [modelData.id])
+                                            }
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
 
-                // Controls, Input and Presets
+                // Right Column: Input, Presets & Volume Control
                 Column {
+                    width: (parent.width - 24) * 0.54
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 14
-                    width: 360
 
-                    // Intuitive text input field to type duration
+                    // Intuitive text input field to type duration and optional label
                     Row {
                         width: parent.width
                         spacing: 8
 
                         Rectangle {
-                            width: parent.width - (root.timer.running ? 0 : pageStartBtn.width + 8)
+                            width: parent.width - pageStartBtn.width - 8
                             height: 38
                             radius: 19
                             color: Theme.surface
@@ -668,7 +829,7 @@ Item {
 
                                 Text {
                                     visible: pageTimerInput.text === ""
-                                    text: "Type duration (e.g. 5m, 90s, 1h 30m, 10:00)..."
+                                    text: "Type duration (e.g. 5m, 15m Tea, 10:00)..."
                                     color: Theme.muted
                                     font: pageTimerInput.font
                                 }
@@ -677,7 +838,6 @@ Item {
 
                         Button {
                             id: pageStartBtn
-                            visible: !root.timer.running
                             text: "Start"
                             icon: "play"
                             tone: "accent"
@@ -690,38 +850,6 @@ Item {
                                     Daemon.command("chrono", "timer_start", []);
                                 }
                             }
-                        }
-                    }
-
-                    // Action buttons when running
-                    Row {
-                        spacing: 8
-                        visible: root.timer.running
-
-                        Button {
-                            text: root.timer.paused ? "Resume" : "Pause"
-                            icon: root.timer.paused ? "play" : "pause"
-                            tone: root.timer.paused ? "accent" : "neutral"
-                            onClicked: Daemon.command("chrono", "timer_pause", [])
-                        }
-
-                        Button {
-                            text: "+1 min"
-                            tone: "neutral"
-                            onClicked: Daemon.command("chrono", "timer_add", ["1m"])
-                        }
-
-                        Button {
-                            text: "+5 min"
-                            tone: "neutral"
-                            onClicked: Daemon.command("chrono", "timer_add", ["5m"])
-                        }
-
-                        Button {
-                            text: "Stop"
-                            icon: "stop"
-                            tone: "danger"
-                            onClicked: Daemon.command("chrono", "timer_stop", [])
                         }
                     }
 
@@ -757,6 +885,77 @@ Item {
                                     tone: "raised"
                                     onClicked: Daemon.command("chrono", "timer_start", [modelData.val])
                                 }
+                            }
+                        }
+                    }
+
+                    // Alarm Volume Control Slider
+                    Rectangle {
+                        width: parent.width
+                        height: 54
+                        radius: Theme.radiusLarge
+                        color: Theme.surface
+
+                        Row {
+                            anchors.fill: parent
+                            anchors.margins: 10
+                            spacing: 12
+
+                            Symbol {
+                                anchors.verticalCenter: parent.verticalCenter
+                                name: {
+                                    const v = root.alarmVolume;
+                                    if (v === 0) return "volume-muted";
+                                    if (v < 34) return "volume-1";
+                                    if (v < 67) return "volume-2";
+                                    return "volume-3";
+                                }
+                                size: 18
+                                color: Theme.muted
+                            }
+
+                            Column {
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: parent.width - 24 - 70 - parent.spacing * 2
+                                spacing: 4
+
+                                Row {
+                                    width: parent.width
+
+                                    Text {
+                                        anchors.left: parent.left
+                                        text: "Alarm Volume"
+                                        color: Theme.foreground
+                                        font.pixelSize: Theme.textCaption
+                                        font.family: Theme.fontFamily
+                                        font.weight: Font.DemiBold
+                                    }
+
+                                    Text {
+                                        anchors.right: parent.right
+                                        text: `${root.alarmVolume}%`
+                                        color: Theme.accent
+                                        font.pixelSize: Theme.textCaption
+                                        font.family: Theme.fontFamily
+                                        font.features: { "tnum": 1 }
+                                    }
+                                }
+
+                                Slider {
+                                    width: parent.width
+                                    thickness: 6
+                                    value: root.alarmVolume / 100
+                                    fill: Theme.accent
+                                    onReleased: val => Daemon.command("chrono", "timer_volume", [Math.round(val * 100)])
+                                }
+                            }
+
+                            Button {
+                                anchors.verticalCenter: parent.verticalCenter
+                                text: "Test"
+                                icon: "play"
+                                tone: "ghost"
+                                onClicked: Daemon.command("chrono", "timer_test_sound", [])
                             }
                         }
                     }

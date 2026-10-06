@@ -14,12 +14,9 @@ Item {
     implicitHeight: mainColumn.implicitHeight
 
     function startTimerWithText(text) {
-        const secs = ClockHelper.parseDuration(text);
-        if (secs && secs > 0) {
-            Daemon.command("chrono", "timer_start", [`${secs}s`]);
-            return true;
-        }
-        return false;
+        if (!text || text.trim() === "") return false;
+        Daemon.command("chrono", "timer_start", [text.trim()]);
+        return true;
     }
 
     Column {
@@ -84,10 +81,17 @@ Item {
                         }
 
                         Text {
-                            text: root.timer.paused ? "Paused" : "Countdown"
+                            text: {
+                                if (root.timer.paused) return "Paused";
+                                if (root.timer.label && root.timer.label !== "") {
+                                    return (root.timer.count > 1) ? `${root.timer.label} (+${root.timer.count - 1})` : root.timer.label;
+                                }
+                                return (root.timer.count > 1) ? `Countdown (${root.timer.count})` : "Countdown";
+                            }
                             color: Theme.muted
                             font.pixelSize: Theme.textLabel
                             font.family: Theme.fontFamily
+                            elide: Text.ElideRight
                         }
                     }
                 }

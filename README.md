@@ -1,73 +1,65 @@
 # Chrono
 
-All-in-one Clock, Stopwatch, and Countdown Timer plugin for Mochi.
+All-in-one clock, stopwatch, and timer plugin for Mochi.
 
 ## Features
 
-- Clock: Real-time clock display with seconds, full date, and day progress tracking (available in the dedicated Chrono page).
-- Stopwatch: Precise timer with tenth-of-a-second resolution and lap tracking (split and total time).
-- Countdown Timer: Customizable countdown timer with intuitive natural text input (e.g. `5m`, `90s`, `1h 30m`, `10:00`), circular progress ring, one-click presets, audio notification, and island activity alerts.
-- Dynamic Bubble: Shows remaining time or active stopwatch next to the island pill. Clicking the bubble toggles pause/resume.
-- Hub & Desktop Integration: Compact interactive Hub card and desktop widget (Timer and Stopwatch), plus a full-featured Hub page.
+- Clock: Real-time clock display with seconds, full date, day progress tracking, and selectable world clocks (Los Angeles, New York, London, Paris, Dubai, Singapore, Tokyo, Sydney).
+- Stopwatch: Precise timer with tenth-of-a-second resolution, split laps, run history, and clipboard export via `wl-copy`.
+- Multi-timers: Simultaneous countdown timers with optional labels, progress indicators, and individual controls.
+- Natural duration input: Intuitive syntax such as `5m`, `90s`, `1h 30m`, `10:00`, or `15m Tea`.
+- Alarm volume control: Adjustable volume from 0 to 100%, preview button, and custom sound file support.
+- Media sync: Automatically pauses active media playback when a timer completes.
+- Launcher provider: Quick timer creation and stopwatch controls with `:t <duration> [label]`.
+- Global keybindings: Control stopwatch in any application or game via Hyprland shortcuts.
+- Dynamic Island: Compact bubble showing progress and time, expanding into full controls on click.
 
-## Installation
+## Global keybindings
 
-In `~/.config/mochi/plugins.toml`:
+Added to `~/.config/hypr/config/bindings.lua`:
 
-```toml
-[plugins.chrono]
-source = "path:plugins/chrono"
-```
+- `SUPER + K`: Pause or resume stopwatch
+- `SUPER + SHIFT + K`: Record a lap
+- `SUPER + CTRL + R`: Reset stopwatch and save run to history
 
-Build and install the plugin:
+## Launcher commands
 
-```sh
-mochi plugins install chrono
-```
+Type `:t` into Mochi launcher:
 
-In `~/.config/mochi/config.toml`, add `"chrono"` to `modules`:
+- `:t 10m Pizza`: Starts a 10-minute timer labeled Pizza
+- `:t 25m`: Starts a 25-minute timer
+- `:t sw`: Toggles stopwatch
 
-```toml
-modules = [
-    "idle",
-    "osd",
-    "workspaces",
-    "hub",
-    "chrono"
-]
-```
+## IPC commands
 
-Reload Mochi:
+Run actions with `mochi ipc chrono`:
 
 ```sh
-mochi reload
-```
-
-## IPC Commands
-
-Run actions from your terminal with `mochi ipc chrono`:
-
-```sh
-# Current status
+# Status
 mochi ipc chrono status
 
-# Switch active mode (clock, stopwatch, timer)
+# Mode switch (clock, stopwatch, timer)
 mochi ipc chrono mode timer
 
-# Countdown Timer (supports intuitive duration syntax)
-mochi ipc chrono timer_start "10m"       # 10 minutes
-mochi ipc chrono timer_start "90s"       # 90 seconds
-mochi ipc chrono timer_start "1h 30m"    # 1 hour 30 minutes
-mochi ipc chrono timer_start "05:00"     # 5 minutes
-mochi ipc chrono timer_pause             # Pause or resume
-mochi ipc chrono timer_add "5m"          # Add 5 minutes
-mochi ipc chrono timer_stop              # Stop and reset
+# Multi-timers
+mochi ipc chrono timer_start "10m" "Pizza"
+mochi ipc chrono timer_start "25m"
+mochi ipc chrono timer_pause
+mochi ipc chrono timer_pause "t1"
+mochi ipc chrono timer_add "5m"
+mochi ipc chrono timer_stop
+mochi ipc chrono timer_stop "t1"
+
+# Alarm volume (0 to 100)
+mochi ipc chrono timer_volume 75
+mochi ipc chrono timer_test_sound
 
 # Stopwatch
-mochi ipc chrono stopwatch_start         # Start stopwatch
-mochi ipc chrono stopwatch_lap           # Record a lap
-mochi ipc chrono stopwatch_pause         # Pause or resume
-mochi ipc chrono stopwatch_reset         # Reset stopwatch
+mochi ipc chrono stopwatch_start
+mochi ipc chrono stopwatch_pause
+mochi ipc chrono stopwatch_lap
+mochi ipc chrono stopwatch_export
+mochi ipc chrono stopwatch_reset
 ```
 
 ## Configuration
@@ -76,19 +68,14 @@ In `~/.config/mochi/config.toml`:
 
 ```toml
 [module.chrono]
-# Default timer duration in minutes
 default_timer_minutes = 5
-
-# Clock time format
 clock_format = "%H:%M:%S"
-
-# Island bubble position (CenterRight, CenterLeft, Right, Left)
+clock_24h = true
 area = "CenterRight"
-
-# Show bubble for timer or stopwatch
 timer_bubble = true
 stopwatch_bubble = true
-
-# Sound alert when timer expires
 sound = true
+alarm_volume = 80
+pause_media = true
+# sound_file = "/usr/share/sounds/freedesktop/stereo/alarm-clock-elapsed.oga"
 ```

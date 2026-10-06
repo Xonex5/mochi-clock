@@ -1,7 +1,7 @@
 [plugin]
 id = "chrono"
 name = "Clock"
-version = "0.1.0"
+version = "0.2.0"
 description = "All-in-one clock, stopwatch, and timer for Mochi"
 authors = ["xo"]
 api = 1
@@ -13,9 +13,12 @@ build = "cargo build --release --target-dir target && install -Dm755 target/rele
 [release]
 asset = "chrono-{version}-{arch}-linux.tar.gz"
 
+[uses]
+state = ["media"]
+
 [[actions]]
 name = "status"
-description = "Show the status of the clock, stopwatch, and timer"
+description = "Show the status of the clock, stopwatch, and timers"
 
 [[actions]]
 name = "mode"
@@ -26,25 +29,44 @@ args = [
 
 [[actions]]
 name = "timer_start"
-description = "Start the countdown timer with a duration"
+description = "Start a countdown timer with duration and optional label"
 args = [
-    { name = "duration", description = "Duration (e.g. 10m, 90s, 1h 30m, 05:00, or minutes)", kind = "string", optional = true }
+    { name = "duration", description = "Duration (e.g. 10m, 90s, 1h 30m, 05:00)", kind = "string", optional = true },
+    { name = "label", description = "Optional timer label (e.g. Pizza, Tea, Work)", kind = "string", optional = true }
 ]
 
 [[actions]]
 name = "timer_pause"
-description = "Pause or resume the countdown timer"
+description = "Pause or resume a timer"
+args = [
+    { name = "id", description = "Timer ID (defaults to active timer)", kind = "string", optional = true }
+]
 
 [[actions]]
 name = "timer_stop"
-description = "Stop and reset the countdown timer"
+description = "Stop and remove a timer"
+args = [
+    { name = "id", description = "Timer ID (defaults to active timer)", kind = "string", optional = true }
+]
 
 [[actions]]
 name = "timer_add"
-description = "Add time to the timer"
+description = "Add time to a timer"
 args = [
-    { name = "duration", description = "Duration to add (e.g. 1m, 5m, 30s)", kind = "string", optional = false }
+    { name = "duration", description = "Duration to add (e.g. 1m, 5m, 30s)", kind = "string", optional = false },
+    { name = "id", description = "Timer ID (optional)", kind = "string", optional = true }
 ]
+
+[[actions]]
+name = "timer_volume"
+description = "Set the timer alarm volume (0 to 100)"
+args = [
+    { name = "volume", description = "Volume percentage (0 to 100)", kind = "int", optional = false }
+]
+
+[[actions]]
+name = "timer_test_sound"
+description = "Test the alarm sound at current volume"
 
 [[actions]]
 name = "stopwatch_start"
@@ -61,6 +83,24 @@ description = "Stop and reset the stopwatch"
 [[actions]]
 name = "stopwatch_lap"
 description = "Record a lap on the stopwatch"
+
+[[actions]]
+name = "stopwatch_export"
+description = "Export stopwatch laps to clipboard"
+
+[[actions]]
+name = "launcher_search"
+description = "Search timer and stopwatch actions for launcher"
+args = [
+    { name = "query", description = "Search query", kind = "string", optional = true, rest = true }
+]
+
+[[actions]]
+name = "launcher_pick"
+description = "Handle picked launcher item"
+args = [
+    { name = "id", description = "Picked item id", kind = "string", optional = false }
+]
 
 [[contributions]]
 target = "hub"
@@ -87,3 +127,10 @@ id = "chrono"
 view = "Card"
 title = "Clock"
 options = { size = [18, 9], min = [14, 7], max = [36, 16] }
+
+[[contributions]]
+target = "launcher"
+kind = "provider"
+id = "chrono"
+title = "Clock & Timer"
+options = { prefix = ":t", search = "launcher_search", pick = "launcher_pick" }
