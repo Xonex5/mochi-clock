@@ -550,7 +550,7 @@ impl ChronoPlugin {
             0.0
         };
 
-        let world_cities = get_world_clocks(&self.settings.clock_format, local_gmtoff);
+        let (world_clocks_map, available_cities) = get_world_clocks(&self.settings.clock_format, local_gmtoff);
 
         let state = json!({
             "mode": self.mode,
@@ -561,7 +561,8 @@ impl ChronoPlugin {
                 "minutes": m,
                 "seconds": s,
                 "day_progress": ((h * 3600 + m * 60 + s) as f64) / 86400.0,
-                "world_clocks": world_cities,
+                "world_clocks": json!(world_clocks_map),
+                "available_cities": available_cities,
             },
             "stopwatch": {
                 "running": self.stopwatch.running,
@@ -636,34 +637,45 @@ fn current_local_time(format: &str) -> (String, String, i64, u32, u32, u32) {
 }
 
 struct CityDef {
+    id: &'static str,
     city: &'static str,
     country: &'static str,
     timezone: &'static str,
 }
 
 const WORLD_CITIES: &[CityDef] = &[
-    CityDef { city: "Los Angeles", country: "United States", timezone: "America/Los_Angeles" },
-    CityDef { city: "New York", country: "United States", timezone: "America/New_York" },
-    CityDef { city: "London", country: "United Kingdom", timezone: "Europe/London" },
-    CityDef { city: "Paris", country: "France", timezone: "Europe/Paris" },
-    CityDef { city: "Dubai", country: "United Arab Emirates", timezone: "Asia/Dubai" },
-    CityDef { city: "Singapore", country: "Singapore", timezone: "Asia/Singapore" },
-    CityDef { city: "Tokyo", country: "Japan", timezone: "Asia/Tokyo" },
-    CityDef { city: "Sydney", country: "Australia", timezone: "Australia/Sydney" },
+    CityDef { id: "los_angeles", city: "Los Angeles", country: "United States", timezone: "America/Los_Angeles" },
+    CityDef { id: "new_york", city: "New York", country: "United States", timezone: "America/New_York" },
+    CityDef { id: "london", city: "London", country: "United Kingdom", timezone: "Europe/London" },
+    CityDef { id: "paris", city: "Paris", country: "France", timezone: "Europe/Paris" },
+    CityDef { id: "dubai", city: "Dubai", country: "United Arab Emirates", timezone: "Asia/Dubai" },
+    CityDef { id: "singapore", city: "Singapore", country: "Singapore", timezone: "Asia/Singapore" },
+    CityDef { id: "tokyo", city: "Tokyo", country: "Japan", timezone: "Asia/Tokyo" },
+    CityDef { id: "sydney", city: "Sydney", country: "Australia", timezone: "Australia/Sydney" },
 ];
 
 unsafe extern "C" {
     fn tzset();
 }
 
-fn get_world_clocks(format: &str, local_gmtoff: i64) -> Vec<Value> {
+use std::collections::HashMap;
+
+fn get_world_clocks(format: &str, local_gmtoff: i64) -> (HashMap<String, Value>, Vec<Value>) {
     let now = std::time::SystemTime::now();
     let epoch = now.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
     let secs = epoch.as_secs() as i64;
 
-    let mut result = Vec::with_capacity(WORLD_CITIES.len());
+    let mut map = HashMap::new();
+    let mut available = Vec::with_capacity(WORLD_CITIES.len());
 
     for city in WORLD_CITIES {
+        available.push(json!({
+            "id": city.id,
+            "city": city.city,
+            "country": city.country,
+            "timezone": city.timezone,
+        }));
+
         unsafe {
             let orig_tz = libc::getenv(b"TZ\0".as_ptr() as *const libc::c_char);
             let orig_tz_str = if !orig_tz.is_null() {
@@ -726,20 +738,24 @@ fn get_world_clocks(format: &str, local_gmtoff: i64) -> Vec<Value> {
             }
             tzset();
 
-            result.push(json!({
-                "city": city.city,
-                "country": city.country,
-                "timezone": city.timezone,
-                "time": time_str,
-                "date": date_str,
-                "offset": diff_str,
-                "hours": tm.tm_hour,
-                "minutes": tm.tm_min,
-            }));
+            map.insert(
+                city.id.to_string(),
+                json!({
+                    "id": city.id,
+                    "city": city.city,
+                    "country": city.country,
+                    "timezone": city.timezone,
+                    "time": time_str,
+                    "date": date_str,
+                    "offset": diff_str,
+                    "hours": tm.tm_hour,
+                    "minutes": tm.tm_min,
+                }),
+            );
         }
     }
 
-    result
+    (map, available)
 }
 
 fn format_tenths(d: Duration) -> String {

@@ -13,7 +13,20 @@ Item {
     readonly property var timer: payload?.timer ?? ({})
     readonly property var laps: stopwatch.laps ?? []
     readonly property var history: stopwatch.history ?? []
-    readonly property var worldClocks: clock.world_clocks ?? []
+    readonly property var worldClocks: clock.world_clocks ?? ({})
+    readonly property var availableCities: clock.available_cities ?? [
+        { "id": "los_angeles", "city": "Los Angeles", "country": "United States" },
+        { "id": "new_york", "city": "New York", "country": "United States" },
+        { "id": "london", "city": "London", "country": "United Kingdom" },
+        { "id": "paris", "city": "Paris", "country": "France" },
+        { "id": "dubai", "city": "Dubai", "country": "United Arab Emirates" },
+        { "id": "singapore", "city": "Singapore", "country": "Singapore" },
+        { "id": "tokyo", "city": "Tokyo", "country": "Japan" },
+        { "id": "sydney", "city": "Sydney", "country": "Australia" }
+    ]
+
+    // Selected cities for World Clock (Los Angeles & Tokyo selected by default)
+    property var selectedCities: ["los_angeles", "tokyo"]
 
     property string stopwatchSubTab: "laps" // "laps" or "history"
 
@@ -21,6 +34,17 @@ Item {
     implicitHeight: 380
 
     focus: true
+
+    function toggleCity(cityId) {
+        const idx = selectedCities.indexOf(cityId);
+        if (idx >= 0) {
+            const next = selectedCities.slice();
+            next.splice(idx, 1);
+            selectedCities = next;
+        } else {
+            selectedCities = selectedCities.concat([cityId]);
+        }
+    }
 
     function startTimerWithText(text) {
         const secs = ClockHelper.parseDuration(text);
@@ -53,7 +77,7 @@ Item {
 
     Column {
         anchors.fill: parent
-        spacing: 14
+        spacing: 12
 
         // Tab bar navigation
         Segmented {
@@ -72,24 +96,24 @@ Item {
             onPicked: value => Daemon.command("chrono", "mode", [value])
         }
 
-        // ================= CLOCK VIEW (with World Clocks) =================
+        // ================= CLOCK VIEW (Selectable World Clocks) =================
         Item {
             visible: root.mode === "clock"
             width: parent.width
-            height: parent.height - nav.height - 14
+            height: parent.height - nav.height - 12
 
             Row {
                 anchors.fill: parent
-                spacing: 20
+                spacing: 18
 
                 // Local Time & Day Progress
                 Column {
-                    width: parent.width * 0.42
+                    width: parent.width * 0.38
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 16
+                    spacing: 14
 
                     Column {
-                        spacing: 4
+                        spacing: 2
 
                         Text {
                             text: root.clock.time ?? "00:00:00"
@@ -110,18 +134,18 @@ Item {
 
                     Rectangle {
                         width: parent.width
-                        height: 72
+                        height: 64
                         radius: Theme.radiusLarge
                         color: Theme.surface
 
                         Column {
                             anchors.centerIn: parent
-                            spacing: 8
+                            spacing: 6
                             width: parent.width - 24
 
                             Item {
                                 width: parent.width
-                                height: 18
+                                height: 16
 
                                 Text {
                                     anchors.left: parent.left
@@ -150,10 +174,10 @@ Item {
                     }
                 }
 
-                // World Clocks Card
+                // World Clocks Card with City Selector
                 Rectangle {
-                    width: parent.width * 0.58
-                    height: parent.height - 8
+                    width: parent.width * 0.62
+                    height: parent.height - 4
                     anchors.verticalCenter: parent.verticalCenter
                     radius: Theme.radiusLarge
                     color: Theme.surface
@@ -164,76 +188,119 @@ Item {
                         anchors.margins: 12
                         spacing: 8
 
-                        Row {
+                        Text {
+                            text: "Select World Clocks"
+                            color: Theme.foreground
+                            font.pixelSize: Theme.textBody
+                            font.family: Theme.fontFamily
+                            font.weight: Font.DemiBold
+                        }
+
+                        // City Selection Chips
+                        Flickable {
                             width: parent.width
+                            height: 32
+                            contentWidth: chipRow.implicitWidth
+                            clip: true
+                            flickableDirection: Flickable.HorizontalFlick
 
-                            Text {
-                                text: "World Clocks"
-                                color: Theme.foreground
-                                font.pixelSize: Theme.textBody
-                                font.family: Theme.fontFamily
-                                font.weight: Font.DemiBold
-                            }
+                            Row {
+                                id: chipRow
+                                spacing: 6
 
-                            Item { width: 1; height: 1 }
+                                Repeater {
+                                    model: root.availableCities
 
-                            Text {
-                                anchors.right: parent.right
-                                text: `${root.worldClocks.length} cities`
-                                color: Theme.muted
-                                font.pixelSize: Theme.textCaption
-                                font.family: Theme.fontFamily
+                                    Button {
+                                        readonly property bool isSelected: root.selectedCities.indexOf(modelData.id) >= 0
+                                        text: modelData.city
+                                        icon: isSelected ? "check" : "plus"
+                                        tone: isSelected ? "accent" : "raised"
+                                        onClicked: root.toggleCity(modelData.id)
+                                    }
+                                }
                             }
                         }
 
-                        ListView {
+                        // Active World Clocks List (Model is static selectedCities array, scroll never resets!)
+                        Item {
                             width: parent.width
-                            height: parent.height - 30
-                            clip: true
-                            spacing: 5
-                            model: root.worldClocks
+                            height: parent.height - 76
 
-                            delegate: Rectangle {
-                                width: parent.width
-                                height: 38
-                                radius: Theme.radiusSmall
-                                color: Theme.raised
+                            Text {
+                                visible: root.selectedCities.length === 0
+                                anchors.centerIn: parent
+                                text: "No world clocks selected\nClick any city above to add it"
+                                horizontalAlignment: Text.AlignHCenter
+                                color: Theme.muted
+                                font.pixelSize: Theme.textLabel
+                                font.family: Theme.fontFamily
+                            }
 
-                                Item {
-                                    anchors.fill: parent
-                                    anchors.leftMargin: 12
-                                    anchors.rightMargin: 12
+                            ListView {
+                                visible: root.selectedCities.length > 0
+                                anchors.fill: parent
+                                clip: true
+                                spacing: 5
+                                model: root.selectedCities
 
-                                    Column {
-                                        anchors.left: parent.left
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        spacing: 1
+                                delegate: Rectangle {
+                                    id: cityCard
 
-                                        Text {
-                                            text: modelData.city
-                                            color: Theme.foreground
-                                            font.pixelSize: Theme.textLabel
-                                            font.family: Theme.fontFamily
-                                            font.weight: Font.DemiBold
+                                    readonly property var cityData: root.worldClocks[modelData] ?? ({})
+
+                                    width: parent.width
+                                    height: 40
+                                    radius: Theme.radiusSmall
+                                    color: Theme.raised
+
+                                    Item {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 12
+                                        anchors.rightMargin: 8
+
+                                        Column {
+                                            anchors.left: parent.left
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            spacing: 1
+
+                                            Text {
+                                                text: cityCard.cityData.city ?? modelData
+                                                color: Theme.foreground
+                                                font.pixelSize: Theme.textBody
+                                                font.family: Theme.fontFamily
+                                                font.weight: Font.DemiBold
+                                            }
+
+                                            Text {
+                                                text: `${cityCard.cityData.offset ?? ""} · ${cityCard.cityData.date ?? ""}`
+                                                color: Theme.muted
+                                                font.pixelSize: Theme.textCaption
+                                                font.family: Theme.fontFamily
+                                            }
                                         }
 
-                                        Text {
-                                            text: `${modelData.offset} · ${modelData.date}`
-                                            color: Theme.muted
-                                            font.pixelSize: Theme.textCaption
-                                            font.family: Theme.fontFamily
-                                        }
-                                    }
+                                        Row {
+                                            anchors.right: parent.right
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            spacing: 8
 
-                                    Text {
-                                        anchors.right: parent.right
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: modelData.time
-                                        color: Theme.accent
-                                        font.pixelSize: Theme.textBody
-                                        font.family: Theme.displayFamily
-                                        font.weight: Font.Bold
-                                        font.features: { "tnum": 1 }
+                                            Text {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: cityCard.cityData.time ?? "00:00:00"
+                                                color: Theme.accent
+                                                font.pixelSize: Theme.textTitle
+                                                font.family: Theme.displayFamily
+                                                font.weight: Font.Bold
+                                                font.features: { "tnum": 1 }
+                                            }
+
+                                            Button {
+                                                icon: "close"
+                                                tone: "ghost"
+                                                onClicked: root.toggleCity(modelData)
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -243,21 +310,21 @@ Item {
             }
         }
 
-        // ================= STOPWATCH VIEW (with Shortcuts & History) =================
+        // ================= STOPWATCH VIEW (Shortcuts & History) =================
         Item {
             visible: root.mode === "stopwatch"
             width: parent.width
-            height: parent.height - nav.height - 14
+            height: parent.height - nav.height - 12
 
             Row {
                 anchors.fill: parent
-                spacing: 20
+                spacing: 18
 
                 // Controls, Big Time, and Key Hints
                 Column {
-                    width: (parent.width - 20) * 0.48
+                    width: (parent.width - 18) * 0.48
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 14
+                    spacing: 12
 
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
@@ -307,20 +374,33 @@ Item {
                         }
                     }
 
-                    // Keyboard shortcuts legend
-                    Text {
+                    // Global & in-app shortcut hints
+                    Column {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Shortcuts: Space (Start/Pause) · L (Lap) · R (Reset)"
-                        color: Theme.muted
-                        font.pixelSize: Theme.textCaption
-                        font.family: Theme.fontFamily
+                        spacing: 2
+
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "In-app: [Space] Start/Pause · [L] Lap · [R] Reset"
+                            color: Theme.muted
+                            font.pixelSize: Theme.textCaption
+                            font.family: Theme.fontFamily
+                        }
+
+                        Text {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: "Global (in-game): Super+K (Pause) · Super+Shift+K (Lap) · Super+Ctrl+R (Reset)"
+                            color: Theme.accent
+                            font.pixelSize: Theme.textCaption
+                            font.family: Theme.fontFamily
+                        }
                     }
                 }
 
                 // Laps & History Card
                 Rectangle {
-                    width: (parent.width - 20) * 0.52
-                    height: parent.height - 8
+                    width: (parent.width - 18) * 0.52
+                    height: parent.height - 4
                     anchors.verticalCenter: parent.verticalCenter
                     radius: Theme.radiusLarge
                     color: Theme.surface
@@ -331,19 +411,19 @@ Item {
                         anchors.margins: 12
                         spacing: 8
 
-                        // Sub-tabs: Current Laps vs Last 5 Runs History
+                        // Sub-tabs: Current Laps vs History
                         Row {
                             width: parent.width
                             spacing: 8
 
                             Button {
-                                text: `Current Laps (${root.laps.length})`
+                                text: `Laps (${root.laps.length})`
                                 tone: root.stopwatchSubTab === "laps" ? "accent" : "ghost"
                                 onClicked: root.stopwatchSubTab = "laps"
                             }
 
                             Button {
-                                text: `Last 5 History (${root.history.length})`
+                                text: "History"
                                 tone: root.stopwatchSubTab === "history" ? "accent" : "ghost"
                                 onClicked: root.stopwatchSubTab = "history"
                             }
@@ -358,7 +438,7 @@ Item {
                             Text {
                                 visible: root.laps.length === 0
                                 anchors.centerIn: parent
-                                text: "No laps recorded yet\nPress [L] while running"
+                                text: "No laps recorded yet\nPress [L] or Super+Shift+K while running"
                                 horizontalAlignment: Text.AlignHCenter
                                 color: Theme.muted
                                 font.pixelSize: Theme.textLabel
@@ -421,7 +501,7 @@ Item {
                             }
                         }
 
-                        // Last 5 Runs History view
+                        // History view (last 5 runs)
                         Item {
                             visible: root.stopwatchSubTab === "history"
                             width: parent.width
@@ -495,11 +575,11 @@ Item {
             }
         }
 
-        // ================= TIMER VIEW (with Intuitive Input & Clean Presets) =================
+        // ================= TIMER VIEW (Clean 25 min & Intuitive Input) =================
         Item {
             visible: root.mode === "timer"
             width: parent.width
-            height: parent.height - nav.height - 14
+            height: parent.height - nav.height - 12
 
             Row {
                 anchors.centerIn: parent
@@ -645,7 +725,7 @@ Item {
                         }
                     }
 
-                    // Quick presets grid (25 min is plain without parentheses)
+                    // Quick presets grid (clean 25 min without parentheses)
                     Column {
                         spacing: 6
 
