@@ -1,0 +1,90 @@
+[plugin]
+id = "chrono"
+name = "Chrono"
+version = "0.1.0"
+description = "Horloge, chronomètre et minuteur tout-en-un pour Mochi"
+authors = ["xo"]
+api = 1
+
+[backend]
+exec = "bin/chrono"
+build = "cargo build --release --target-dir target && install -Dm755 target/release/chrono bin/chrono"
+
+[release]
+asset = "chrono-{version}-{arch}-linux.tar.gz"
+
+[[actions]]
+name = "status"
+description = "Affiche l'état de l'horloge, du chronomètre et du minuteur"
+
+[[actions]]
+name = "mode"
+description = "Bascule le mode d'affichage actif (clock, stopwatch, timer)"
+args = [
+    { name = "mode", description = "Le mode d'affichage", kind = "choice", choices = ["clock", "stopwatch", "timer"], optional = false }
+]
+
+[[actions]]
+name = "timer_start"
+description = "Démarre le minuteur"
+args = [
+    { name = "minutes", description = "Durée en minutes", kind = "int", optional = true },
+    { name = "seconds", description = "Secondes supplémentaires", kind = "int", optional = true }
+]
+
+[[actions]]
+name = "timer_pause"
+description = "Met en pause ou reprend le minuteur"
+
+[[actions]]
+name = "timer_stop"
+description = "Arrête et réinitialise le minuteur"
+
+[[actions]]
+name = "timer_add"
+description = "Ajoute du temps au minuteur (en minutes)"
+args = [
+    { name = "minutes", description = "Nombre de minutes à ajouter", kind = "int", optional = false }
+]
+
+[[actions]]
+name = "stopwatch_start"
+description = "Démarre le chronomètre"
+
+[[actions]]
+name = "stopwatch_pause"
+description = "Met en pause ou reprend le chronomètre"
+
+[[actions]]
+name = "stopwatch_reset"
+description = "Arrête et remet à zéro le chronomètre"
+
+[[actions]]
+name = "stopwatch_lap"
+description = "Enregistre un tour (lap) sur le chronomètre"
+
+[[contributions]]
+target = "hub"
+kind = "card"
+id = "chrono"
+view = "Card"
+title = "Chrono"
+icon = "clock"
+order = 65
+options = { span = 2 }
+
+[[contributions]]
+target = "hub"
+kind = "page"
+id = "chrono"
+view = "Page"
+title = "Chrono"
+icon = "clock"
+
+[[contributions]]
+target = "widgets"
+kind = "widget"
+id = "chrono"
+view = "Card"
+title = "Chrono"
+options = { size = [18, 9], min = [14, 7], max = [36, 16] }

@@ -1,0 +1,19 @@
+[package]
+name = "mochi-plugin-chrono"
+description = "Plugin Mochi 3-en-1 : Horloge, Chronomètre et Minuteur"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+publish = false
+
+[[bin]]
+name = "chrono"
+path = "src/main.rs"
+
+[dependencies]
+# Dans votre propre dépôt distant, remplacez par :
+# mochi-sdk = { git = "https://github.com/DavidutzDev/mochi", tag = "v0.0.5" }
+mochi-sdk = { path = "/home/xo/mochi/crates/mochi-sdk" }
+serde = { version = "1", features = ["derive"] }
+tokio = { version = "1", features = ["macros", "process", "time"] }
+libc = "0.2"
