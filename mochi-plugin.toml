@@ -1,6 +1,6 @@
 [plugin]
 id = "chrono"
-name = "Chrono"
+name = "Clock"
 version = "0.1.0"
 description = "All-in-one clock, stopwatch, and timer for Mochi"
 authors = ["xo"]
@@ -67,7 +67,7 @@ target = "hub"
 kind = "card"
 id = "chrono"
 view = "Card"
-title = "Chrono"
+title = "Clock"
 icon = "clock"
 order = 65
 options = { span = 2 }
@@ -77,7 +77,7 @@ target = "hub"
 kind = "page"
 id = "chrono"
 view = "Page"
-title = "Chrono"
+title = "Clock"
 icon = "clock"
 
 [[contributions]]
@@ -85,5 +85,5 @@ target = "widgets"
 kind = "widget"
 id = "chrono"
 view = "Card"
-title = "Chrono"
+title = "Clock"
 options = { size = [18, 9], min = [14, 7], max = [36, 16] }

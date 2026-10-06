@@ -45,6 +45,15 @@ struct Lap {
     formatted_total: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
+struct StopwatchSession {
+    index: usize,
+    formatted_total: String,
+    total_ms: u64,
+    lap_count: usize,
+    timestamp: String,
+}
+
 #[derive(Debug)]
 struct Stopwatch {
     running: bool,
@@ -53,6 +62,7 @@ struct Stopwatch {
     accumulated: Duration,
     last_lap_total: Duration,
     laps: Vec<Lap>,
+    history: Vec<StopwatchSession>,
 }
 
 impl Stopwatch {
@@ -64,6 +74,7 @@ impl Stopwatch {
             accumulated: Duration::ZERO,
             last_lap_total: Duration::ZERO,
             laps: Vec::new(),
+            history: Vec::new(),
         }
     }
 
@@ -115,7 +126,24 @@ impl Stopwatch {
         }
     }
 
-    fn reset(&mut self) {
+    fn reset(&mut self, timestamp: &str) {
+        let total = self.elapsed();
+        if total.as_millis() > 0 {
+            let session_idx = self.history.len() + 1;
+            self.history.insert(
+                0,
+                StopwatchSession {
+                    index: session_idx,
+                    formatted_total: format_tenths(total),
+                    total_ms: total.as_millis() as u64,
+                    lap_count: self.laps.len(),
+                    timestamp: timestamp.to_string(),
+                },
+            );
+            if self.history.len() > 5 {
+                self.history.truncate(5);
+            }
+        }
         self.running = false;
         self.paused = false;
         self.start_instant = None;
@@ -268,7 +296,6 @@ async fn run(mut ctx: ModuleCtx) -> Result<(), mochi_sdk::Error> {
     plugin.publish(&ctx);
 
     loop {
-        // Ticking interval adapts based on whether stopwatch is running (100ms for precision) or idle (500ms)
         let tick_duration = if plugin.stopwatch.running && !plugin.stopwatch.paused {
             Duration::from_millis(100)
         } else {
@@ -294,7 +321,7 @@ impl ChronoPlugin {
         let action = command.action.clone();
         match action.as_str() {
             "status" => {
-                let (time_str, date_str, _, _, _) = current_local_time(&self.settings.clock_format);
+                let (time_str, date_str, _, _, _, _) = current_local_time(&self.settings.clock_format);
                 let sw_desc = if self.stopwatch.running {
                     let state = if self.stopwatch.paused { "paused" } else { "running" };
                     format!(
@@ -391,7 +418,8 @@ impl ChronoPlugin {
                 command.reply(Ok(()));
             }
             "stopwatch_reset" => {
-                self.stopwatch.reset();
+                let (time_str, _, _, _, _, _) = current_local_time("%H:%M:%S");
+                self.stopwatch.reset(&time_str);
                 self.sync_bubble(ctx);
                 self.publish(ctx);
                 command.reply(Ok(()));
@@ -514,13 +542,15 @@ impl ChronoPlugin {
     }
 
     fn publish(&self, ctx: &ModuleCtx) {
-        let (time_str, date_str, h, m, s) = current_local_time(&self.settings.clock_format);
+        let (time_str, date_str, local_gmtoff, h, m, s) = current_local_time(&self.settings.clock_format);
         let sw_elapsed = self.stopwatch.elapsed();
         let timer_progress = if self.timer.total.as_secs_f64() > 0.0 {
             (self.timer.left.as_secs_f64() / self.timer.total.as_secs_f64()).clamp(0.0, 1.0)
         } else {
             0.0
         };
+
+        let world_cities = get_world_clocks(&self.settings.clock_format, local_gmtoff);
 
         let state = json!({
             "mode": self.mode,
@@ -531,6 +561,7 @@ impl ChronoPlugin {
                 "minutes": m,
                 "seconds": s,
                 "day_progress": ((h * 3600 + m * 60 + s) as f64) / 86400.0,
+                "world_clocks": world_cities,
             },
             "stopwatch": {
                 "running": self.stopwatch.running,
@@ -540,6 +571,7 @@ impl ChronoPlugin {
                 "laps": self.stopwatch.laps,
                 "lap_count": self.stopwatch.laps.len(),
                 "last_lap": self.stopwatch.laps.last(),
+                "history": self.stopwatch.history,
             },
             "timer": {
                 "running": self.timer.running,
@@ -555,7 +587,7 @@ impl ChronoPlugin {
     }
 }
 
-fn current_local_time(format: &str) -> (String, String, u32, u32, u32) {
+fn current_local_time(format: &str) -> (String, String, i64, u32, u32, u32) {
     let now = std::time::SystemTime::now();
     let epoch = now.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
     let secs = epoch.as_secs() as i64;
@@ -595,11 +627,119 @@ fn current_local_time(format: &str) -> (String, String, u32, u32, u32) {
         (
             formatted_time,
             formatted_date,
+            tm.tm_gmtoff,
             tm.tm_hour as u32,
             tm.tm_min as u32,
             tm.tm_sec as u32,
         )
     }
+}
+
+struct CityDef {
+    city: &'static str,
+    country: &'static str,
+    timezone: &'static str,
+}
+
+const WORLD_CITIES: &[CityDef] = &[
+    CityDef { city: "Los Angeles", country: "United States", timezone: "America/Los_Angeles" },
+    CityDef { city: "New York", country: "United States", timezone: "America/New_York" },
+    CityDef { city: "London", country: "United Kingdom", timezone: "Europe/London" },
+    CityDef { city: "Paris", country: "France", timezone: "Europe/Paris" },
+    CityDef { city: "Dubai", country: "United Arab Emirates", timezone: "Asia/Dubai" },
+    CityDef { city: "Singapore", country: "Singapore", timezone: "Asia/Singapore" },
+    CityDef { city: "Tokyo", country: "Japan", timezone: "Asia/Tokyo" },
+    CityDef { city: "Sydney", country: "Australia", timezone: "Australia/Sydney" },
+];
+
+unsafe extern "C" {
+    fn tzset();
+}
+
+fn get_world_clocks(format: &str, local_gmtoff: i64) -> Vec<Value> {
+    let now = std::time::SystemTime::now();
+    let epoch = now.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
+    let secs = epoch.as_secs() as i64;
+
+    let mut result = Vec::with_capacity(WORLD_CITIES.len());
+
+    for city in WORLD_CITIES {
+        unsafe {
+            let orig_tz = libc::getenv(b"TZ\0".as_ptr() as *const libc::c_char);
+            let orig_tz_str = if !orig_tz.is_null() {
+                Some(std::ffi::CStr::from_ptr(orig_tz).to_bytes().to_vec())
+            } else {
+                None
+            };
+
+            let c_tz = std::ffi::CString::new(city.timezone).unwrap();
+            libc::setenv(b"TZ\0".as_ptr() as *const libc::c_char, c_tz.as_ptr(), 1);
+            tzset();
+
+            let mut tm = std::mem::zeroed();
+            libc::localtime_r(&secs, &mut tm);
+
+            let mut time_buf = [0u8; 64];
+            let c_fmt = std::ffi::CString::new(format)
+                .unwrap_or_else(|_| std::ffi::CString::new("%H:%M:%S").unwrap());
+            let t_len = libc::strftime(
+                time_buf.as_mut_ptr() as *mut libc::c_char,
+                time_buf.len(),
+                c_fmt.as_ptr(),
+                &tm,
+            );
+            let time_str = if t_len > 0 {
+                String::from_utf8_lossy(&time_buf[..t_len]).to_string()
+            } else {
+                "00:00:00".to_string()
+            };
+
+            let mut date_buf = [0u8; 64];
+            let d_fmt = std::ffi::CString::new("%a, %b %e").unwrap();
+            let d_len = libc::strftime(
+                date_buf.as_mut_ptr() as *mut libc::c_char,
+                date_buf.len(),
+                d_fmt.as_ptr(),
+                &tm,
+            );
+            let date_str = if d_len > 0 {
+                String::from_utf8_lossy(&date_buf[..d_len]).to_string()
+            } else {
+                String::new()
+            };
+
+            let diff_secs = tm.tm_gmtoff - local_gmtoff;
+            let diff_hours = diff_secs / 3600;
+            let diff_str = if diff_hours == 0 {
+                "Same time".to_string()
+            } else if diff_hours > 0 {
+                format!("+{diff_hours} hrs")
+            } else {
+                format!("{diff_hours} hrs")
+            };
+
+            if let Some(orig) = orig_tz_str {
+                let c_orig = std::ffi::CString::new(orig).unwrap();
+                libc::setenv(b"TZ\0".as_ptr() as *const libc::c_char, c_orig.as_ptr(), 1);
+            } else {
+                libc::unsetenv(b"TZ\0".as_ptr() as *const libc::c_char);
+            }
+            tzset();
+
+            result.push(json!({
+                "city": city.city,
+                "country": city.country,
+                "timezone": city.timezone,
+                "time": time_str,
+                "date": date_str,
+                "offset": diff_str,
+                "hours": tm.tm_hour,
+                "minutes": tm.tm_min,
+            }));
+        }
+    }
+
+    result
 }
 
 fn format_tenths(d: Duration) -> String {
