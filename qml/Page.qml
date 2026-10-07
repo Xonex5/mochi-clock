@@ -555,7 +555,7 @@ Item {
                 }
         }
 
-        // ================= STOPWATCH VIEW (Shortcuts & History) =================
+        // ================= STOPWATCH VIEW (Hero & Laps/History) =================
         Item {
             visible: root.mode === "stopwatch"
             anchors.top: nav.bottom
@@ -564,27 +564,65 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
 
-            Row {
-                anchors.fill: parent
-                spacing: 18
+            // Left Panel: Centered Hero Stopwatch & Controls
+            Rectangle {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: (parent.width - 16) * 0.44
+                radius: Theme.radiusLarge
+                color: Theme.surface
+                border.width: 1
+                border.color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.08)
 
-                // Controls, Big Time, and Key Hints
                 Column {
-                    width: (parent.width - 18) * 0.48
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 16
+                    anchors.centerIn: parent
+                    width: parent.width - 36
+                    spacing: 18
 
+                    // Status Pill Badge
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        height: 26
+                        radius: 13
+                        color: Theme.raised
+                        implicitWidth: swBadgeRow.implicitWidth + 20
+
+                        Row {
+                            id: swBadgeRow
+                            anchors.centerIn: parent
+                            spacing: 6
+
+                            Symbol {
+                                name: "clock"
+                                size: 13
+                                color: root.stopwatch.running ? (root.stopwatch.paused ? Theme.muted : Theme.accent) : Theme.muted
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                text: !root.stopwatch.running ? "Stopwatch" : (root.stopwatch.paused ? "Paused" : "Running")
+                                color: Theme.foreground
+                                font.pixelSize: Theme.textCaption
+                                font.family: Theme.fontFamily
+                                font.weight: Font.Medium
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+                    }
+
+                    // Huge Digital Time
                     Text {
                         anchors.horizontalCenter: parent.horizontalCenter
                         text: root.stopwatch.formatted ?? "00:00.0"
                         color: Theme.foreground
-                        font.pixelSize: Theme.textDisplay * 1.3
+                        font.pixelSize: Theme.textDisplay * 1.45
                         font.family: Theme.displayFamily
                         font.weight: Font.Bold
                         font.features: { "tnum": 1 }
                     }
 
-                    // Action buttons with clean labels
+                    // Action Buttons Row
                     Row {
                         anchors.horizontalCenter: parent.horizontalCenter
                         spacing: 8
@@ -622,14 +660,13 @@ Item {
                         }
                     }
 
-                    // Clean Keyboard Shortcuts card (bounded, never overflows)
+                    // Keyboard Shortcuts Card
                     Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
                         width: parent.width
                         implicitHeight: shortcutsCol.implicitHeight + 16
                         radius: Theme.radiusMedium
-                        color: Theme.surface
-                        border.width: 1
-                        border.color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.08)
+                        color: Theme.raised
 
                         Column {
                             id: shortcutsCol
@@ -703,68 +740,102 @@ Item {
                         }
                     }
                 }
+            }
 
-                // Laps & History Card
-                Rectangle {
-                    width: (parent.width - 18) * 0.52
-                    height: parent.height - 4
-                    anchors.verticalCenter: parent.verticalCenter
-                    radius: Theme.radiusLarge
-                    color: Theme.surface
-                    clip: true
+            // Right Panel: Laps & History Card
+            Rectangle {
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: (parent.width - 16) * 0.56
+                radius: Theme.radiusLarge
+                color: Theme.surface
+                border.width: 1
+                border.color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.08)
+                clip: true
 
-                    Column {
-                        anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 8
+                Column {
+                    anchors.fill: parent
+                    anchors.margins: 14
+                    spacing: 10
 
-                        // Sub-tabs: Current Laps vs History + Export
-                        Item {
-                            width: parent.width
-                            height: 32
+                    // Sub-tabs: Current Laps vs History + Export
+                    Item {
+                        width: parent.width
+                        height: 32
 
-                            Row {
-                                anchors.left: parent.left
-                                anchors.verticalCenter: parent.verticalCenter
-                                spacing: 8
+                        Row {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            spacing: 8
 
-                                Button {
-                                    text: `Laps (${root.laps.length})`
-                                    tone: root.stopwatchSubTab === "laps" ? "accent" : "ghost"
-                                    onClicked: root.stopwatchSubTab = "laps"
-                                }
-
-                                Button {
-                                    text: "History"
-                                    tone: root.stopwatchSubTab === "history" ? "accent" : "ghost"
-                                    onClicked: root.stopwatchSubTab = "history"
-                                }
+                            Button {
+                                text: `Laps (${root.laps.length})`
+                                tone: root.stopwatchSubTab === "laps" ? "accent" : "ghost"
+                                onClicked: root.stopwatchSubTab = "laps"
                             }
 
                             Button {
-                                anchors.right: parent.right
-                                anchors.verticalCenter: parent.verticalCenter
-                                text: "Export"
-                                icon: "copy"
-                                tone: "ghost"
-                                onClicked: Daemon.command("chrono", "stopwatch_export", [])
+                                text: `History (${root.history.length})`
+                                tone: root.stopwatchSubTab === "history" ? "accent" : "ghost"
+                                onClicked: root.stopwatchSubTab = "history"
                             }
                         }
 
-                        // Current Laps view
+                        Button {
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "Export"
+                            icon: "copy"
+                            tone: "ghost"
+                            onClicked: Daemon.command("chrono", "stopwatch_export", [])
+                        }
+                    }
+
+                    // Main List Content Area (Laps OR History)
+                    Item {
+                        width: parent.width
+                        height: parent.height - 42
+
+                        // Laps View
                         Item {
                             visible: root.stopwatchSubTab === "laps"
-                            width: parent.width
-                            height: parent.height - 40
+                            anchors.fill: parent
 
-                            Text {
+                            // Empty State
+                            Column {
                                 visible: root.laps.length === 0
                                 anchors.centerIn: parent
-                                text: "No laps recorded yet\nPress [L] or Super+Shift+K while running"
-                                horizontalAlignment: Text.AlignHCenter
-                                color: Theme.muted
-                                font.pixelSize: Theme.textLabel
-                                font.family: Theme.fontFamily
+                                spacing: 12
+
+                                Symbol {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    name: "clock"
+                                    size: 32
+                                    color: Theme.muted
+                                }
+
+                                Column {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    spacing: 4
+
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: "No laps recorded yet"
+                                        color: Theme.foreground
+                                        font.pixelSize: Theme.textBody
+                                        font.family: Theme.fontFamily
+                                        font.weight: Font.DemiBold
+                                    }
+
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: "Press [L] or Super+Shift+K while running"
+                                        color: Theme.muted
+                                        font.pixelSize: Theme.textCaption
+                                        font.family: Theme.fontFamily
+                                    }
+                                }
                             }
 
                             ListView {
@@ -772,26 +843,27 @@ Item {
                                 anchors.fill: parent
                                 clip: true
                                 model: root.laps.slice().reverse()
-                                spacing: 4
+                                spacing: 6
 
                                 delegate: Rectangle {
                                     width: parent.width
-                                    height: 30
+                                    height: 38
                                     radius: Theme.radiusSmall
                                     color: Theme.raised
 
                                     Item {
                                         anchors.fill: parent
-                                        anchors.leftMargin: 10
-                                        anchors.rightMargin: 10
+                                        anchors.leftMargin: 12
+                                        anchors.rightMargin: 12
 
                                         Text {
                                             anchors.left: parent.left
                                             anchors.verticalCenter: parent.verticalCenter
                                             text: `Lap ${modelData.index}`
-                                            color: Theme.muted
-                                            font.pixelSize: Theme.textLabel
+                                            color: Theme.foreground
+                                            font.pixelSize: Theme.textBody
                                             font.family: Theme.fontFamily
+                                            font.weight: Font.Medium
                                         }
 
                                         Row {
@@ -803,7 +875,7 @@ Item {
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 text: `+${modelData.formatted_split}`
                                                 color: Theme.accent
-                                                font.pixelSize: Theme.textLabel
+                                                font.pixelSize: Theme.textCaption
                                                 font.family: Theme.fontFamily
                                                 font.features: { "tnum": 1 }
                                             }
@@ -812,9 +884,9 @@ Item {
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 text: modelData.formatted_total
                                                 color: Theme.foreground
-                                                font.pixelSize: Theme.textLabel
-                                                font.family: Theme.fontFamily
-                                                font.weight: Font.DemiBold
+                                                font.pixelSize: Theme.textHeadline
+                                                font.family: Theme.displayFamily
+                                                font.weight: Font.Bold
                                                 font.features: { "tnum": 1 }
                                             }
                                         }
@@ -823,20 +895,45 @@ Item {
                             }
                         }
 
-                        // History view (last 5 runs)
+                        // History View
                         Item {
                             visible: root.stopwatchSubTab === "history"
-                            width: parent.width
-                            height: parent.height - 40
+                            anchors.fill: parent
 
-                            Text {
+                            // Empty State
+                            Column {
                                 visible: root.history.length === 0
                                 anchors.centerIn: parent
-                                text: "No history yet\nResetting a run saves it here"
-                                horizontalAlignment: Text.AlignHCenter
-                                color: Theme.muted
-                                font.pixelSize: Theme.textLabel
-                                font.family: Theme.fontFamily
+                                spacing: 12
+
+                                Symbol {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    name: "clock"
+                                    size: 32
+                                    color: Theme.muted
+                                }
+
+                                Column {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    spacing: 4
+
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: "No history yet"
+                                        color: Theme.foreground
+                                        font.pixelSize: Theme.textBody
+                                        font.family: Theme.fontFamily
+                                        font.weight: Font.DemiBold
+                                    }
+
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: "Resetting a completed run will save it here"
+                                        color: Theme.muted
+                                        font.pixelSize: Theme.textCaption
+                                        font.family: Theme.fontFamily
+                                    }
+                                }
                             }
 
                             ListView {
@@ -844,28 +941,28 @@ Item {
                                 anchors.fill: parent
                                 clip: true
                                 model: root.history
-                                spacing: 4
+                                spacing: 6
 
                                 delegate: Rectangle {
                                     width: parent.width
-                                    height: 34
+                                    height: 44
                                     radius: Theme.radiusSmall
                                     color: Theme.raised
 
                                     Item {
                                         anchors.fill: parent
-                                        anchors.leftMargin: 10
-                                        anchors.rightMargin: 10
+                                        anchors.leftMargin: 12
+                                        anchors.rightMargin: 12
 
                                         Column {
                                             anchors.left: parent.left
                                             anchors.verticalCenter: parent.verticalCenter
-                                            spacing: 1
+                                            spacing: 2
 
                                             Text {
                                                 text: `Run #${modelData.index} · ${modelData.lap_count} laps`
                                                 color: Theme.foreground
-                                                font.pixelSize: Theme.textLabel
+                                                font.pixelSize: Theme.textBody
                                                 font.family: Theme.fontFamily
                                                 font.weight: Font.DemiBold
                                             }
@@ -883,8 +980,8 @@ Item {
                                             anchors.verticalCenter: parent.verticalCenter
                                             text: modelData.formatted_total
                                             color: Theme.accent
-                                            font.pixelSize: Theme.textBody
-                                            font.family: Theme.fontFamily
+                                            font.pixelSize: Theme.textHeadline
+                                            font.family: Theme.displayFamily
                                             font.weight: Font.Bold
                                             font.features: { "tnum": 1 }
                                         }
@@ -906,198 +1003,254 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
 
-            Row {
-                anchors.fill: parent
-                spacing: 24
+            // Left Panel: Ready Ring (when idle) or Active Timers List
+            Rectangle {
+                anchors.left: parent.left
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: (parent.width - 16) * 0.44
+                radius: Theme.radiusLarge
+                color: Theme.surface
+                border.width: 1
+                border.color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.08)
+                clip: true
 
-                // Left Column: Ready Ring (when idle) or Active Timers List
-                Item {
-                    width: (parent.width - 24) * 0.46
-                    height: parent.height
+                // Idle State (No Timers Running)
+                Column {
+                    visible: root.activeTimers.length === 0
+                    anchors.centerIn: parent
+                    width: parent.width - 36
+                    spacing: 18
 
-                    // Idle State (No Timers Running)
-                    Column {
-                        visible: root.activeTimers.length === 0
-                        anchors.centerIn: parent
-                        spacing: 16
+                    // Timer Status Pill Badge
+                    Rectangle {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        height: 26
+                        radius: 13
+                        color: Theme.raised
+                        implicitWidth: timerBadgeRow.implicitWidth + 20
 
-                        Item {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            width: 140
-                            height: 140
+                        Row {
+                            id: timerBadgeRow
+                            anchors.centerIn: parent
+                            spacing: 6
 
-                            Ring {
-                                anchors.fill: parent
-                                line: 6
+                            Symbol {
+                                name: "bell"
+                                size: 13
                                 color: Theme.accent
-                                progress: 1
+                                anchors.verticalCenter: parent.verticalCenter
                             }
 
-                            Column {
-                                anchors.centerIn: parent
-                                spacing: 2
-
-                                Text {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    text: `${root.timer.default_minutes ?? 5}:00`
-                                    color: Theme.foreground
-                                    font.pixelSize: Theme.textTitle * 1.4
-                                    font.family: Theme.displayFamily
-                                    font.weight: Font.Bold
-                                    font.features: { "tnum": 1 }
-                                }
-
-                                Text {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    text: "Ready"
-                                    color: Theme.muted
-                                    font.pixelSize: Theme.textCaption
-                                    font.family: Theme.fontFamily
-                                }
+                            Text {
+                                text: "Timer"
+                                color: Theme.foreground
+                                font.pixelSize: Theme.textCaption
+                                font.family: Theme.fontFamily
+                                font.weight: Font.Medium
+                                anchors.verticalCenter: parent.verticalCenter
                             }
-                        }
-
-                        Button {
-                            anchors.horizontalCenter: parent.horizontalCenter
-                            text: "Start Default"
-                            icon: "play"
-                            tone: "accent"
-                            onClicked: Daemon.command("chrono", "timer_start", [])
                         }
                     }
 
-                    // Active Timers List (1 or more running timers)
+                    // Hero Circular Countdown Ring
                     Item {
-                        visible: root.activeTimers.length > 0
-                        anchors.fill: parent
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        width: 140
+                        height: 140
+
+                        Ring {
+                            anchors.fill: parent
+                            line: 6
+                            color: Theme.accent
+                            progress: 1
+                        }
 
                         Column {
-                            anchors.fill: parent
-                            spacing: 8
+                            anchors.centerIn: parent
+                            spacing: 2
 
-                            Item {
-                                width: parent.width
-                                height: 26
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: `${root.timer.default_minutes ?? 5}:00`
+                                color: Theme.foreground
+                                font.pixelSize: Theme.textTitle * 1.4
+                                font.family: Theme.displayFamily
+                                font.weight: Font.Bold
+                                font.features: { "tnum": 1 }
+                            }
+
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: "Ready"
+                                color: Theme.muted
+                                font.pixelSize: Theme.textCaption
+                                font.family: Theme.fontFamily
+                            }
+                        }
+                    }
+
+                    Button {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        text: "Start Default"
+                        icon: "play"
+                        tone: "accent"
+                        onClicked: Daemon.command("chrono", "timer_start", [])
+                    }
+                }
+
+                // Active Timers List (1 or more running timers)
+                Item {
+                    visible: root.activeTimers.length > 0
+                    anchors.fill: parent
+
+                    Column {
+                        anchors.fill: parent
+                        anchors.margins: 14
+                        spacing: 10
+
+                        Item {
+                            width: parent.width
+                            height: 32
+
+                            Row {
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 8
 
                                 Text {
-                                    anchors.left: parent.left
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    text: `Active Timers (${root.activeTimers.length})`
+                                    text: "Active Timers"
                                     color: Theme.foreground
                                     font.pixelSize: Theme.textBody
                                     font.family: Theme.fontFamily
                                     font.weight: Font.DemiBold
+                                    anchors.verticalCenter: parent.verticalCenter
                                 }
 
-                                Button {
-                                    anchors.right: parent.right
+                                Rectangle {
+                                    height: 20
+                                    radius: 10
+                                    color: Theme.raised
+                                    implicitWidth: timerCountText.implicitWidth + 12
                                     anchors.verticalCenter: parent.verticalCenter
-                                    visible: root.activeTimers.length > 1
-                                    text: "Stop all"
-                                    icon: "stop"
-                                    tone: "ghost"
-                                    onClicked: Daemon.command("chrono", "timer_stop", [])
+
+                                    Text {
+                                        id: timerCountText
+                                        anchors.centerIn: parent
+                                        text: `${root.activeTimers.length}`
+                                        color: Theme.muted
+                                        font.pixelSize: Theme.textCaption
+                                        font.family: Theme.fontFamily
+                                    }
                                 }
                             }
 
-                            ListView {
+                            Button {
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                visible: root.activeTimers.length > 1
+                                text: "Stop all"
+                                icon: "stop"
+                                tone: "ghost"
+                                onClicked: Daemon.command("chrono", "timer_stop", [])
+                            }
+                        }
+
+                        ListView {
+                            width: parent.width
+                            height: parent.height - 42
+                            clip: true
+                            spacing: 6
+                            model: root.activeTimers
+
+                            delegate: Rectangle {
+                                id: timerCard
+
                                 width: parent.width
-                                height: parent.height - 34
-                                clip: true
-                                spacing: 6
-                                model: root.activeTimers
+                                height: 52
+                                radius: Theme.radiusMedium
+                                color: Theme.raised
 
-                                delegate: Rectangle {
-                                    id: timerCard
+                                // Left: Progress Ring
+                                Ring {
+                                    id: cardRing
+                                    anchors.left: parent.left
+                                    anchors.leftMargin: 12
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    width: 30
+                                    height: 30
+                                    line: 3
+                                    color: modelData.paused ? Theme.muted : Theme.accent
+                                    progress: modelData.progress ?? 0
+                                }
 
-                                    width: parent.width
-                                    height: 52
-                                    radius: Theme.radiusMedium
-                                    color: Theme.surface
-                                    border.width: 1
-                                    border.color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.08)
+                                // Right: Action Buttons Row
+                                Row {
+                                    id: cardActions
+                                    anchors.right: parent.right
+                                    anchors.rightMargin: 8
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 4
 
-                                    // Left: Progress Ring
-                                    Ring {
-                                        id: cardRing
-                                        anchors.left: parent.left
-                                        anchors.leftMargin: 12
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        width: 30
-                                        height: 30
-                                        line: 3
-                                        color: modelData.paused ? Theme.muted : Theme.accent
-                                        progress: modelData.progress ?? 0
+                                    Button {
+                                        text: "+1m"
+                                        tone: "ghost"
+                                        onClicked: Daemon.command("chrono", "timer_add", ["1m", modelData.id])
                                     }
 
-                                    // Right: Action Buttons Row (always visible and right-anchored)
+                                    Button {
+                                        icon: modelData.paused ? "play" : "pause"
+                                        tone: modelData.paused ? "accent" : "neutral"
+                                        onClicked: Daemon.command("chrono", "timer_pause", [modelData.id])
+                                    }
+
+                                    Button {
+                                        icon: "close"
+                                        tone: "ghost"
+                                        onClicked: Daemon.command("chrono", "timer_stop", [modelData.id])
+                                    }
+                                }
+
+                                // Middle: Label and Remaining Time
+                                Column {
+                                    anchors.left: cardRing.right
+                                    anchors.leftMargin: 10
+                                    anchors.right: cardActions.left
+                                    anchors.rightMargin: 8
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 2
+                                    clip: true
+
+                                    Text {
+                                        width: parent.width
+                                        text: modelData.label && modelData.label !== "" ? modelData.label : "Timer"
+                                        color: Theme.foreground
+                                        font.pixelSize: Theme.textBody
+                                        font.family: Theme.fontFamily
+                                        font.weight: Font.DemiBold
+                                        elide: Text.ElideRight
+                                    }
+
                                     Row {
-                                        id: cardActions
-                                        anchors.right: parent.right
-                                        anchors.rightMargin: 8
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        spacing: 4
-
-                                        Button {
-                                            text: "+1m"
-                                            tone: "ghost"
-                                            onClicked: Daemon.command("chrono", "timer_add", ["1m", modelData.id])
-                                        }
-
-                                        Button {
-                                            icon: modelData.paused ? "play" : "pause"
-                                            tone: modelData.paused ? "accent" : "neutral"
-                                            onClicked: Daemon.command("chrono", "timer_pause", [modelData.id])
-                                        }
-
-                                        Button {
-                                            icon: "close"
-                                            tone: "ghost"
-                                            onClicked: Daemon.command("chrono", "timer_stop", [modelData.id])
-                                        }
-                                    }
-
-                                    // Middle: Label and Remaining Time (flexibly bounded)
-                                    Column {
-                                        anchors.left: cardRing.right
-                                        anchors.leftMargin: 10
-                                        anchors.right: cardActions.left
-                                        anchors.rightMargin: 8
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        spacing: 2
-                                        clip: true
+                                        spacing: 6
 
                                         Text {
-                                            width: parent.width
-                                            text: modelData.label && modelData.label !== "" ? modelData.label : "Timer"
-                                            color: Theme.foreground
-                                            font.pixelSize: Theme.textBody
-                                            font.family: Theme.fontFamily
-                                            font.weight: Font.DemiBold
-                                            elide: Text.ElideRight
+                                            text: modelData.formatted ?? "00:00"
+                                            color: modelData.paused ? Theme.muted : Theme.accent
+                                            font.pixelSize: Theme.textCaption
+                                            font.family: Theme.displayFamily
+                                            font.weight: Font.Bold
+                                            font.features: { "tnum": 1 }
                                         }
 
-                                        Row {
-                                            spacing: 6
-
-                                            Text {
-                                                text: modelData.formatted ?? "00:00"
-                                                color: modelData.paused ? Theme.muted : Theme.accent
-                                                font.pixelSize: Theme.textCaption
-                                                font.family: Theme.displayFamily
-                                                font.weight: Font.Bold
-                                                font.features: { "tnum": 1 }
-                                            }
-
-                                            Text {
-                                                visible: modelData.paused
-                                                text: "PAUSED"
-                                                color: Theme.muted
-                                                font.pixelSize: Theme.textCaption * 0.8
-                                                font.family: Theme.fontFamily
-                                                font.weight: Font.Bold
-                                                anchors.verticalCenter: parent.verticalCenter
-                                            }
+                                        Text {
+                                            visible: modelData.paused
+                                            text: "PAUSED"
+                                            color: Theme.muted
+                                            font.pixelSize: Theme.textCaption * 0.8
+                                            font.family: Theme.fontFamily
+                                            font.weight: Font.Bold
+                                            anchors.verticalCenter: parent.verticalCenter
                                         }
                                     }
                                 }
@@ -1105,12 +1258,40 @@ Item {
                         }
                     }
                 }
+            }
 
-                // Right Column: Input, Presets & Volume Control
+            // Right Panel: Input, Presets & Volume Control
+            Rectangle {
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: (parent.width - 16) * 0.56
+                radius: Theme.radiusLarge
+                color: Theme.surface
+                border.width: 1
+                border.color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.08)
+                clip: true
+
                 Column {
-                    width: (parent.width - 24) * 0.54
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 14
+                    anchors.fill: parent
+                    anchors.margins: 14
+                    spacing: 12
+
+                    // Header
+                    Item {
+                        width: parent.width
+                        height: 32
+
+                        Text {
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "New Timer & Controls"
+                            color: Theme.foreground
+                            font.pixelSize: Theme.textBody
+                            font.family: Theme.fontFamily
+                            font.weight: Font.DemiBold
+                        }
+                    }
 
                     // Intuitive text input field to type duration and optional label
                     Row {
@@ -1121,7 +1302,7 @@ Item {
                             width: parent.width - pageStartBtn.width - 8
                             height: 38
                             radius: 19
-                            color: Theme.surface
+                            color: Theme.raised
 
                             Symbol {
                                 id: pageInputIcon
@@ -1152,7 +1333,7 @@ Item {
 
                                 Text {
                                     visible: pageTimerInput.text === ""
-                                    text: "Type duration (e.g. 5m, 15m Tea, 10:00)..."
+                                    text: "Duration & label (e.g. 5m, 15m Tea, 10:00)..."
                                     color: Theme.muted
                                     font: pageTimerInput.font
                                 }
@@ -1176,20 +1357,23 @@ Item {
                         }
                     }
 
-                    // Quick presets grid (clean 25 min without parentheses)
+                    // Quick Presets Grid
                     Column {
-                        spacing: 6
+                        width: parent.width
+                        spacing: 8
 
                         Text {
-                            text: "Quick presets:"
+                            text: "Quick Presets"
                             color: Theme.muted
                             font.pixelSize: Theme.textCaption
                             font.family: Theme.fontFamily
+                            font.weight: Font.Medium
                         }
 
                         Grid {
+                            width: parent.width
                             columns: 4
-                            spacing: 6
+                            spacing: 8
 
                             Repeater {
                                 model: [
@@ -1204,6 +1388,8 @@ Item {
                                 ]
 
                                 Button {
+                                    width: (parent.width - 24) / 4
+                                    implicitHeight: 34
                                     text: modelData.label
                                     tone: "raised"
                                     onClicked: Daemon.command("chrono", "timer_start", [modelData.val])
@@ -1216,11 +1402,9 @@ Item {
                     Rectangle {
                         id: volumeCard
                         width: parent.width
-                        height: 54
-                        radius: Theme.radiusLarge
-                        color: Theme.surface
-                        border.width: 1
-                        border.color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.08)
+                        height: 60
+                        radius: Theme.radiusMedium
+                        color: Theme.raised
 
                         property int currentVolume: root.alarmVolume
                         onCurrentVolumeChanged: {
@@ -1231,7 +1415,7 @@ Item {
 
                         Item {
                             anchors.fill: parent
-                            anchors.margins: 10
+                            anchors.margins: 12
 
                             Symbol {
                                 id: volIcon
@@ -1244,7 +1428,7 @@ Item {
                                     if (v < 67) return "volume-2";
                                     return "volume-3";
                                 }
-                                size: 18
+                                size: 20
                                 color: Theme.muted
                             }
 
@@ -1264,7 +1448,7 @@ Item {
                                 anchors.right: testSoundBtn.left
                                 anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                spacing: 4
+                                spacing: 5
 
                                 Item {
                                     width: parent.width
@@ -1306,6 +1490,34 @@ Item {
                                         Daemon.command("chrono", "timer_volume", [`${v}`]);
                                     }
                                 }
+                            }
+                        }
+                    }
+
+                    // Informational Tip Card
+                    Rectangle {
+                        width: parent.width
+                        height: 48
+                        radius: Theme.radiusMedium
+                        color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.04)
+
+                        Row {
+                            anchors.centerIn: parent
+                            spacing: 8
+
+                            Symbol {
+                                name: "bell"
+                                size: 14
+                                color: Theme.muted
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+
+                            Text {
+                                text: "Tip: Add custom labels like '15m Coffee' or '25m Pomodoro'"
+                                color: Theme.muted
+                                font.pixelSize: Theme.textCaption
+                                font.family: Theme.fontFamily
+                                anchors.verticalCenter: parent.verticalCenter
                             }
                         }
                     }
