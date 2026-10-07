@@ -53,50 +53,19 @@ Item {
                 visible: root.timer.running
                 anchors.fill: parent
 
-                Row {
+                Ring {
+                    id: cardTimerRing
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: 12
-
-                    Ring {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: 32
-                        height: 32
-                        line: 3
-                        color: root.timer.paused ? Theme.muted : Theme.accent
-                        progress: root.timer.progress ?? 1
-                    }
-
-                    Column {
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 2
-
-                        Text {
-                            text: root.timer.formatted ?? "00:00"
-                            color: Theme.foreground
-                            font.pixelSize: Theme.textTitle
-                            font.family: Theme.fontFamily
-                            font.weight: Font.DemiBold
-                            font.features: { "tnum": 1 }
-                        }
-
-                        Text {
-                            text: {
-                                if (root.timer.paused) return "Paused";
-                                if (root.timer.label && root.timer.label !== "") {
-                                    return (root.timer.count > 1) ? `${root.timer.label} (+${root.timer.count - 1})` : root.timer.label;
-                                }
-                                return (root.timer.count > 1) ? `Countdown (${root.timer.count})` : "Countdown";
-                            }
-                            color: Theme.muted
-                            font.pixelSize: Theme.textLabel
-                            font.family: Theme.fontFamily
-                            elide: Text.ElideRight
-                        }
-                    }
+                    width: 32
+                    height: 32
+                    line: 3
+                    color: root.timer.paused ? Theme.muted : Theme.accent
+                    progress: root.timer.progress ?? 1
                 }
 
                 Row {
+                    id: cardTimerActions
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     spacing: 6
@@ -117,6 +86,40 @@ Item {
                         icon: "stop"
                         tone: "danger"
                         onClicked: Daemon.command("chrono", "timer_stop", [])
+                    }
+                }
+
+                Column {
+                    anchors.left: cardTimerRing.right
+                    anchors.leftMargin: 12
+                    anchors.right: cardTimerActions.left
+                    anchors.rightMargin: 8
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: 2
+                    clip: true
+
+                    Text {
+                        text: root.timer.formatted ?? "00:00"
+                        color: Theme.foreground
+                        font.pixelSize: Theme.textTitle
+                        font.family: Theme.displayFamily
+                        font.weight: Font.DemiBold
+                        font.features: { "tnum": 1 }
+                    }
+
+                    Text {
+                        width: parent.width
+                        text: {
+                            if (root.timer.paused) return "Paused";
+                            if (root.timer.label && root.timer.label !== "") {
+                                return (root.timer.count > 1) ? `${root.timer.label} (+${root.timer.count - 1})` : root.timer.label;
+                            }
+                            return (root.timer.count > 1) ? `Countdown (${root.timer.count})` : "Countdown";
+                        }
+                        color: Theme.muted
+                        font.pixelSize: Theme.textLabel
+                        font.family: Theme.fontFamily
+                        elide: Text.ElideRight
                     }
                 }
             }
@@ -250,7 +253,7 @@ Item {
                         text: root.stopwatch.formatted ?? "00:00.0"
                         color: Theme.foreground
                         font.pixelSize: Theme.textTitle
-                        font.family: Theme.fontFamily
+                        font.family: Theme.displayFamily
                         font.weight: Font.DemiBold
                         font.features: { "tnum": 1 }
                     }
