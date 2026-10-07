@@ -715,41 +715,46 @@ Item {
                                     radius: Theme.radiusSmall
                                     color: Theme.raised
 
-                                    Row {
+                                    Item {
                                         anchors.fill: parent
                                         anchors.margins: 8
-                                        spacing: 10
 
-                                        Ring {
+                                        Row {
+                                            anchors.left: parent.left
                                             anchors.verticalCenter: parent.verticalCenter
-                                            width: 26
-                                            height: 26
-                                            line: 3
-                                            color: modelData.paused ? Theme.muted : Theme.accent
-                                            progress: modelData.progress ?? 0
-                                        }
+                                            spacing: 10
 
-                                        Column {
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            width: parent.width - 26 - 150 - parent.spacing * 2
-                                            spacing: 1
-
-                                            Text {
-                                                text: modelData.label && modelData.label !== "" ? modelData.label : "Timer"
-                                                color: Theme.foreground
-                                                font.pixelSize: Theme.textBody
-                                                font.family: Theme.fontFamily
-                                                font.weight: Font.DemiBold
-                                                elide: Text.ElideRight
+                                            Ring {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: 26
+                                                height: 26
+                                                line: 3
+                                                color: modelData.paused ? Theme.muted : Theme.accent
+                                                progress: modelData.progress ?? 0
                                             }
 
-                                            Text {
-                                                text: modelData.formatted ?? "00:00"
-                                                color: Theme.accent
-                                                font.pixelSize: Theme.textCaption
-                                                font.family: Theme.fontFamily
-                                                font.weight: Font.Bold
-                                                font.features: { "tnum": 1 }
+                                            Column {
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                width: parent.width - 26 - 150 - 10
+                                                spacing: 1
+
+                                                Text {
+                                                    text: modelData.label && modelData.label !== "" ? modelData.label : "Timer"
+                                                    color: Theme.foreground
+                                                    font.pixelSize: Theme.textBody
+                                                    font.family: Theme.fontFamily
+                                                    font.weight: Font.DemiBold
+                                                    elide: Text.ElideRight
+                                                }
+
+                                                Text {
+                                                    text: modelData.formatted ?? "00:00"
+                                                    color: Theme.accent
+                                                    font.pixelSize: Theme.textCaption
+                                                    font.family: Theme.fontFamily
+                                                    font.weight: Font.Bold
+                                                    font.features: { "tnum": 1 }
+                                                }
                                             }
                                         }
 
@@ -891,10 +896,18 @@ Item {
 
                     // Alarm Volume Control Slider
                     Rectangle {
+                        id: volumeCard
                         width: parent.width
                         height: 54
                         radius: Theme.radiusLarge
                         color: Theme.surface
+
+                        property int currentVolume: root.alarmVolume
+                        onCurrentVolumeChanged: {
+                            if (!volSlider.dragging) {
+                                currentVolume = root.alarmVolume;
+                            }
+                        }
 
                         Row {
                             anchors.fill: parent
@@ -904,7 +917,7 @@ Item {
                             Symbol {
                                 anchors.verticalCenter: parent.verticalCenter
                                 name: {
-                                    const v = root.alarmVolume;
+                                    const v = volumeCard.currentVolume;
                                     if (v === 0) return "volume-muted";
                                     if (v < 34) return "volume-1";
                                     if (v < 67) return "volume-2";
@@ -919,11 +932,13 @@ Item {
                                 width: parent.width - 24 - 70 - parent.spacing * 2
                                 spacing: 4
 
-                                Row {
+                                Item {
                                     width: parent.width
+                                    height: 16
 
                                     Text {
                                         anchors.left: parent.left
+                                        anchors.verticalCenter: parent.verticalCenter
                                         text: "Alarm Volume"
                                         color: Theme.foreground
                                         font.pixelSize: Theme.textCaption
@@ -933,7 +948,8 @@ Item {
 
                                     Text {
                                         anchors.right: parent.right
-                                        text: `${root.alarmVolume}%`
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: `${volumeCard.currentVolume}%`
                                         color: Theme.accent
                                         font.pixelSize: Theme.textCaption
                                         font.family: Theme.fontFamily
@@ -942,11 +958,19 @@ Item {
                                 }
 
                                 Slider {
+                                    id: volSlider
                                     width: parent.width
                                     thickness: 6
                                     value: root.alarmVolume / 100
                                     fill: Theme.accent
-                                    onReleased: val => Daemon.command("chrono", "timer_volume", [Math.round(val * 100)])
+                                    onMoved: val => {
+                                        volumeCard.currentVolume = Math.round(val * 100);
+                                    }
+                                    onReleased: val => {
+                                        const v = Math.round(val * 100);
+                                        volumeCard.currentVolume = v;
+                                        Daemon.command("chrono", "timer_volume", [`${v}`]);
+                                    }
                                 }
                             }
 
