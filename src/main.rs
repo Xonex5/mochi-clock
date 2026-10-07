@@ -566,6 +566,11 @@ impl ChronoPlugin {
                     command.answer(Ok(text));
                 }
             }
+            "stopwatch_clear_history" => {
+                self.stopwatch.history.clear();
+                self.publish(ctx);
+                command.reply(Ok(()));
+            }
             "launcher_search" => {
                 let query = command.args.str("query").unwrap_or("").trim();
                 let mut results = Vec::new();
@@ -719,10 +724,20 @@ impl ChronoPlugin {
         if !finished.is_empty() {
             for (_, label, total_secs) in &finished {
                 let total_mins = total_secs / 60;
-                let dur_text = if total_mins > 0 {
+                let rem_secs = total_secs % 60;
+                let dur_text = if total_mins > 0 && rem_secs > 0 {
+                    format!("{total_mins} min {rem_secs} s")
+                } else if total_mins > 0 {
                     format!("{total_mins} min")
                 } else {
                     format!("{total_secs} sec")
+                };
+                let dur_arg = if total_mins > 0 && rem_secs > 0 {
+                    format!("{total_mins}m {rem_secs}s")
+                } else if total_mins > 0 {
+                    format!("{total_mins}m")
+                } else {
+                    format!("{total_secs}s")
                 };
                 let title = if label.is_empty() {
                     "Timer finished!".to_string()
@@ -738,6 +753,7 @@ impl ChronoPlugin {
                         .payload(json!({
                             "title": title,
                             "duration": dur_text,
+                            "duration_arg": dur_arg,
                             "label": label,
                         })),
                 );
@@ -1028,6 +1044,11 @@ fn get_world_clocks(format: &str, local_gmtoff: i64) -> (HashMap<String, Value>,
     let epoch = now.duration_since(std::time::UNIX_EPOCH).unwrap_or_default();
     let secs = epoch.as_secs() as i64;
 
+    let mut local_tm = unsafe { std::mem::zeroed() };
+    unsafe {
+        libc::localtime_r(&secs, &mut local_tm);
+    }
+
     let mut map = HashMap::new();
     let mut available = Vec::with_capacity(WORLD_CITIES.len());
 
@@ -1093,6 +1114,20 @@ fn get_world_clocks(format: &str, local_gmtoff: i64) -> (HashMap<String, Value>,
                 format!("{diff_hours} hrs")
             };
 
+            let rel_day = if tm.tm_year == local_tm.tm_year {
+                if tm.tm_yday == local_tm.tm_yday {
+                    "Today"
+                } else if tm.tm_yday > local_tm.tm_yday {
+                    "Tomorrow"
+                } else {
+                    "Yesterday"
+                }
+            } else if tm.tm_year > local_tm.tm_year {
+                "Tomorrow"
+            } else {
+                "Yesterday"
+            };
+
             if let Some(orig) = orig_tz_str {
                 let c_orig = std::ffi::CString::new(orig).unwrap();
                 libc::setenv(b"TZ\0".as_ptr() as *const libc::c_char, c_orig.as_ptr(), 1);
@@ -1111,6 +1146,7 @@ fn get_world_clocks(format: &str, local_gmtoff: i64) -> (HashMap<String, Value>,
                     "time": time_str,
                     "date": date_str,
                     "offset": diff_str,
+                    "relative_day": rel_day,
                     "hours": tm.tm_hour,
                     "minutes": tm.tm_min,
                 }),

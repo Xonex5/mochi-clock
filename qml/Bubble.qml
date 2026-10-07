@@ -34,7 +34,7 @@ Item {
         Symbol {
             visible: !root.isTimer
             anchors.verticalCenter: parent.verticalCenter
-            name: "bolt"
+            name: "clock"
             size: 13
             color: root.tint
         }

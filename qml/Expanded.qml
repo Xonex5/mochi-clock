@@ -64,6 +64,23 @@ Item {
                     font.pixelSize: Theme.textBody
                     font.family: Theme.fontFamily
                 }
+
+                Row {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    spacing: 8
+
+                    Button {
+                        text: "Restart"
+                        tone: "accent"
+                        onClicked: Daemon.command("chrono", "timer_start", [root.payload?.duration_arg ?? "5m", root.payload?.label ?? ""])
+                    }
+
+                    Button {
+                        text: "+5m"
+                        tone: "neutral"
+                        onClicked: Daemon.command("chrono", "timer_start", ["5m", root.payload?.label ?? ""])
+                    }
+                }
             }
         }
 
@@ -125,7 +142,7 @@ Item {
 
                 Symbol {
                     anchors.verticalCenter: parent.verticalCenter
-                    name: "bolt"
+                    name: "clock"
                     size: 32
                     color: root.paused ? Theme.muted : Theme.accent
                 }

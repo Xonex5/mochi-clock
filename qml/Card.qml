@@ -34,7 +34,7 @@ Item {
             color: Theme.raised
             options: [
                 { "value": "timer", "label": "Timer", "icon": "bell" },
-                { "value": "stopwatch", "label": "Stopwatch", "icon": "bolt" }
+                { "value": "stopwatch", "label": "Stopwatch", "icon": "clock" }
             ]
             current: root.activeMode
             onPicked: value => Daemon.command("chrono", "mode", [value])
@@ -240,7 +240,7 @@ Item {
 
                 Symbol {
                     anchors.verticalCenter: parent.verticalCenter
-                    name: "bolt"
+                    name: "clock"
                     size: 24
                     color: root.stopwatch.running ? (root.stopwatch.paused ? Theme.muted : Theme.accent) : Theme.muted
                 }

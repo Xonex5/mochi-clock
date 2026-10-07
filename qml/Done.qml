@@ -43,5 +43,22 @@ Item {
                 font.family: Theme.fontFamily
             }
         }
+
+        Row {
+            anchors.verticalCenter: parent.verticalCenter
+            spacing: 6
+
+            Button {
+                text: "Restart"
+                tone: "accent"
+                onClicked: Daemon.command("chrono", "timer_start", [root.payload.duration_arg ?? "5m", root.payload.label ?? ""])
+            }
+
+            Button {
+                text: "+5m"
+                tone: "ghost"
+                onClicked: Daemon.command("chrono", "timer_start", ["5m", root.payload.label ?? ""])
+            }
+        }
     }
 }

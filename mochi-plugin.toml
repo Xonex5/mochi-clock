@@ -103,6 +103,10 @@ name = "stopwatch_export"
 description = "Export stopwatch laps to clipboard"
 
 [[actions]]
+name = "stopwatch_clear_history"
+description = "Clear stopwatch run history"
+
+[[actions]]
 name = "launcher_search"
 description = "Search timer and stopwatch actions for launcher"
 args = [

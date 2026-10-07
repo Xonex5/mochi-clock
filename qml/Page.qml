@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Shapes
 import qs.island
 import "ClockHelper.js" as ClockHelper
 
@@ -17,6 +18,75 @@ Item {
     readonly property var history: stopwatch.history ?? []
     readonly property var worldClocks: clock.world_clocks ?? ({})
     readonly property var availableCities: clock.available_cities ?? []
+
+    property bool use12hFormat: false
+    property int timerMinutes: 5
+    property int timerSeconds: 0
+    property bool timerInitDone: false
+
+    onTimerChanged: {
+        if (!timerInitDone && root.timer?.default_minutes) {
+            timerMinutes = root.timer.default_minutes;
+            timerInitDone = true;
+        }
+    }
+
+    function formatClockTime(h, m, s, is12h) {
+        if (h === undefined || m === undefined || s === undefined) return "00:00:00";
+        const mm = String(m).padStart(2, '0');
+        const ss = String(s).padStart(2, '0');
+        if (!is12h) {
+            return `${String(h).padStart(2, '0')}:${mm}:${ss}`;
+        }
+        const h12 = (h % 12) === 0 ? 12 : (h % 12);
+        const ampm = h >= 12 ? "PM" : "AM";
+        return `${h12}:${mm}:${ss} ${ampm}`;
+    }
+
+    function formatCityTime(h, m, fallback, is12h) {
+        if (h === undefined || m === undefined) return fallback ?? "00:00:00";
+        if (!is12h) return fallback ?? "00:00:00";
+        const h12 = (h % 12) === 0 ? 12 : (h % 12);
+        const mm = String(m).padStart(2, '0');
+        const ampm = h >= 12 ? "PM" : "AM";
+        return `${h12}:${mm} ${ampm}`;
+    }
+
+    component DayNightIcon: Item {
+        id: dni
+        property bool isDay: true
+        property real size: 16
+        implicitWidth: size
+        implicitHeight: size
+
+        Symbol {
+            visible: !dni.isDay
+            anchors.centerIn: parent
+            name: "moon"
+            size: dni.size
+            color: Theme.muted
+        }
+
+        Shape {
+            visible: dni.isDay
+            anchors.centerIn: parent
+            width: 24
+            height: 24
+            scale: dni.size / 24
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: Theme.accent
+                strokeWidth: 2
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+                PathSvg {
+                    path: "M12 8a4 4 0 1 0 0 8a4 4 0 1 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+                }
+            }
+        }
+    }
 
     // Selected cities for World Clock
     property var selectedCities: root.clock.selected_cities ?? ["paris", "tokyo", "new_york"]
@@ -97,7 +167,7 @@ Item {
         color: Theme.raised
         options: [
             { "value": "clock", "label": "Clock", "icon": "clock" },
-            { "value": "stopwatch", "label": "Stopwatch", "icon": "bolt" },
+            { "value": "stopwatch", "label": "Stopwatch", "icon": "clock" },
             { "value": "timer", "label": "Timer", "icon": "bell" }
         ]
         current: root.mode
@@ -167,9 +237,9 @@ Item {
 
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: root.clock.time ?? "00:00:00"
+                                text: root.formatClockTime(root.clock.hours, root.clock.minutes, root.clock.seconds, root.use12hFormat)
                                 color: Theme.foreground
-                                font.pixelSize: Theme.textDisplay * 1.45
+                                font.pixelSize: root.use12hFormat ? Theme.textDisplay * 1.25 : Theme.textDisplay * 1.45
                                 font.family: Theme.displayFamily
                                 font.weight: Font.Bold
                                 font.features: { "tnum": 1 }
@@ -184,47 +254,37 @@ Item {
                             }
                         }
 
-                        // Day Elapsed Progress Card
+                        // Time Format Switcher (12h AM/PM vs 24h)
                         Rectangle {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: parent.width
-                            height: 60
+                            height: 62
                             radius: Theme.radiusMedium
                             color: Theme.raised
 
                             Column {
                                 anchors.centerIn: parent
                                 width: parent.width - 24
-                                spacing: 8
+                                spacing: 6
 
-                                Item {
-                                    width: parent.width
-                                    height: 16
-
-                                    Text {
-                                        anchors.left: parent.left
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: "Day elapsed"
-                                        color: Theme.muted
-                                        font.pixelSize: Theme.textCaption
-                                        font.family: Theme.fontFamily
-                                    }
-
-                                    Text {
-                                        anchors.right: parent.right
-                                        anchors.verticalCenter: parent.verticalCenter
-                                        text: `${Math.round((root.clock.day_progress ?? 0) * 100)}%`
-                                        color: Theme.accent
-                                        font.pixelSize: Theme.textCaption
-                                        font.family: Theme.fontFamily
-                                        font.weight: Font.DemiBold
-                                    }
+                                Text {
+                                    text: "Time Format"
+                                    color: Theme.muted
+                                    font.pixelSize: Theme.textCaption
+                                    font.family: Theme.fontFamily
+                                    font.weight: Font.Medium
                                 }
 
-                                ProgressBar {
+                                Segmented {
                                     width: parent.width
-                                    value: root.clock.day_progress ?? 0
-                                    fill: Theme.accent
+                                    height: 28
+                                    color: Theme.surface
+                                    options: [
+                                        { "value": "24h", "label": "24-Hour" },
+                                        { "value": "12h", "label": "12-Hour (AM/PM)" }
+                                    ]
+                                    current: root.use12hFormat ? "12h" : "24h"
+                                    onPicked: value => { root.use12hFormat = (value === "12h"); }
                                 }
                             }
                         }
@@ -492,9 +552,11 @@ Item {
                                     delegate: Rectangle {
                                         id: cityClockCard
                                         readonly property var cityData: root.worldClocks[modelData] ?? ({})
+                                        readonly property int cityHours: cityClockCard.cityData.hours ?? 12
+                                        readonly property bool isDay: cityHours >= 6 && cityHours < 20
 
                                         width: parent.width
-                                        height: 48
+                                        height: 52
                                         radius: Theme.radiusMedium
                                         color: Theme.raised
 
@@ -517,7 +579,7 @@ Item {
                                                 }
 
                                                 Text {
-                                                    text: `${cityClockCard.cityData.country ?? ""} · ${cityClockCard.cityData.offset ?? ""}`
+                                                    text: `${cityClockCard.cityData.country ?? ""} · ${cityClockCard.cityData.relative_day ?? "Today"}, ${cityClockCard.cityData.offset ?? ""}`
                                                     color: Theme.muted
                                                     font.pixelSize: Theme.textCaption
                                                     font.family: Theme.fontFamily
@@ -529,11 +591,17 @@ Item {
                                                 anchors.verticalCenter: parent.verticalCenter
                                                 spacing: 8
 
+                                                DayNightIcon {
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    isDay: cityClockCard.isDay
+                                                    size: 16
+                                                }
+
                                                 Text {
                                                     anchors.verticalCenter: parent.verticalCenter
-                                                    text: cityClockCard.cityData.time ?? "00:00:00"
+                                                    text: root.formatCityTime(cityClockCard.cityData.hours, cityClockCard.cityData.minutes, cityClockCard.cityData.time, root.use12hFormat)
                                                     color: Theme.accent
-                                                    font.pixelSize: Theme.textHeadline
+                                                    font.pixelSize: root.use12hFormat ? Theme.textHeadline * 0.9 : Theme.textHeadline
                                                     font.family: Theme.displayFamily
                                                     font.weight: Font.Bold
                                                     font.features: { "tnum": 1 }
@@ -884,13 +952,25 @@ Item {
                             }
                         }
 
-                        Button {
+                        Row {
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
-                            text: "Export"
-                            icon: "copy"
-                            tone: "ghost"
-                            onClicked: Daemon.command("chrono", "stopwatch_export", [])
+                            spacing: 6
+
+                            Button {
+                                visible: root.stopwatchSubTab === "history" && root.history.length > 0
+                                text: "Clear"
+                                icon: "trash"
+                                tone: "ghost"
+                                onClicked: Daemon.command("chrono", "stopwatch_clear_history", [])
+                            }
+
+                            Button {
+                                text: "Export"
+                                icon: "copy"
+                                tone: "ghost"
+                                onClicked: Daemon.command("chrono", "stopwatch_export", [])
+                            }
                         }
                     }
 
@@ -1155,16 +1235,16 @@ Item {
                         }
                     }
 
-                    // Hero Circular Countdown Ring
+                    // Hero Circular Countdown Ring (Interactive scroll on MM & SS)
                     Item {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        width: 140
-                        height: 140
+                        width: 146
+                        height: 146
 
                         Ring {
                             anchors.fill: parent
                             line: 6
-                            color: Theme.accent
+                            color: (minArea.containsMouse || secArea.containsMouse) ? Theme.accent : Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.7)
                             progress: 1
                         }
 
@@ -1172,32 +1252,159 @@ Item {
                             anchors.centerIn: parent
                             spacing: 2
 
-                            Text {
+                            // Digits row: MM : SS
+                            Row {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: `${root.timer.default_minutes ?? 5}:00`
-                                color: Theme.foreground
-                                font.pixelSize: Theme.textTitle * 1.4
-                                font.family: Theme.displayFamily
-                                font.weight: Font.Bold
-                                font.features: { "tnum": 1 }
+                                spacing: 2
+
+                                // Minutes zone
+                                Item {
+                                    id: minBox
+                                    width: minText.implicitWidth + 8
+                                    height: minText.implicitHeight + 4
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: Theme.radiusSmall
+                                        color: minArea.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.15) : "transparent"
+                                    }
+
+                                    Text {
+                                        id: minText
+                                        anchors.centerIn: parent
+                                        text: String(root.timerMinutes).padStart(2, '0')
+                                        color: minArea.containsMouse ? Theme.accent : Theme.foreground
+                                        font.pixelSize: Theme.textTitle * 1.35
+                                        font.family: Theme.displayFamily
+                                        font.weight: Font.Bold
+                                        font.features: { "tnum": 1 }
+                                    }
+
+                                    MouseArea {
+                                        id: minArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onWheel: (wheel) => {
+                                            if (wheel.angleDelta.y > 0) {
+                                                root.timerMinutes = Math.min(999, root.timerMinutes + 1);
+                                            } else if (wheel.angleDelta.y < 0) {
+                                                root.timerMinutes = Math.max(0, root.timerMinutes - 1);
+                                            }
+                                            wheel.accepted = true;
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: ":"
+                                    color: Theme.muted
+                                    font.pixelSize: Theme.textTitle * 1.35
+                                    font.family: Theme.displayFamily
+                                    font.weight: Font.Bold
+                                    font.features: { "tnum": 1 }
+                                }
+
+                                // Seconds zone
+                                Item {
+                                    id: secBox
+                                    width: secText.implicitWidth + 8
+                                    height: secText.implicitHeight + 4
+
+                                    Rectangle {
+                                        anchors.fill: parent
+                                        radius: Theme.radiusSmall
+                                        color: secArea.containsMouse ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.15) : "transparent"
+                                    }
+
+                                    Text {
+                                        id: secText
+                                        anchors.centerIn: parent
+                                        text: String(root.timerSeconds).padStart(2, '0')
+                                        color: secArea.containsMouse ? Theme.accent : Theme.foreground
+                                        font.pixelSize: Theme.textTitle * 1.35
+                                        font.family: Theme.displayFamily
+                                        font.weight: Font.Bold
+                                        font.features: { "tnum": 1 }
+                                    }
+
+                                    MouseArea {
+                                        id: secArea
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onWheel: (wheel) => {
+                                            if (wheel.angleDelta.y > 0) {
+                                                if (root.timerSeconds + 5 >= 60) {
+                                                    root.timerMinutes = Math.min(999, root.timerMinutes + 1);
+                                                    root.timerSeconds = (root.timerSeconds + 5) % 60;
+                                                } else {
+                                                    root.timerSeconds += 5;
+                                                }
+                                            } else if (wheel.angleDelta.y < 0) {
+                                                if (root.timerSeconds - 5 < 0) {
+                                                    if (root.timerMinutes > 0) {
+                                                        root.timerMinutes -= 1;
+                                                        root.timerSeconds = 55;
+                                                    } else {
+                                                        root.timerSeconds = 0;
+                                                    }
+                                                } else {
+                                                    root.timerSeconds -= 5;
+                                                }
+                                            }
+                                            wheel.accepted = true;
+                                        }
+                                    }
+                                }
                             }
 
                             Text {
                                 anchors.horizontalCenter: parent.horizontalCenter
-                                text: "Ready"
-                                color: Theme.muted
+                                text: {
+                                    if (minArea.containsMouse) return "Scroll minutes";
+                                    if (secArea.containsMouse) return "Scroll seconds";
+                                    return "Scroll to adjust";
+                                }
+                                color: (minArea.containsMouse || secArea.containsMouse) ? Theme.accent : Theme.muted
                                 font.pixelSize: Theme.textCaption
                                 font.family: Theme.fontFamily
                             }
                         }
                     }
 
-                    Button {
+                    // Steppers & Start Button Row
+                    Row {
                         anchors.horizontalCenter: parent.horizontalCenter
-                        text: "Start Default"
-                        icon: "play"
-                        tone: "accent"
-                        onClicked: Daemon.command("chrono", "timer_start", [])
+                        spacing: 6
+
+                        Button {
+                            text: "-1m"
+                            tone: "ghost"
+                            enabled: root.timerMinutes > 0 || root.timerSeconds > 0
+                            onClicked: {
+                                if (root.timerMinutes > 0) root.timerMinutes -= 1;
+                                else root.timerSeconds = 0;
+                            }
+                        }
+
+                        Button {
+                            text: `Start ${root.timerMinutes}m${root.timerSeconds > 0 ? " " + root.timerSeconds + "s" : ""}`
+                            icon: "play"
+                            tone: "accent"
+                            enabled: root.timerMinutes > 0 || root.timerSeconds > 0
+                            onClicked: {
+                                const dur = root.timerSeconds > 0 ? `${root.timerMinutes}m ${root.timerSeconds}s` : `${root.timerMinutes}m`;
+                                Daemon.command("chrono", "timer_start", [dur]);
+                            }
+                        }
+
+                        Button {
+                            text: "+1m"
+                            tone: "ghost"
+                            onClicked: root.timerMinutes = Math.min(999, root.timerMinutes + 1)
+                        }
                     }
                 }
 
