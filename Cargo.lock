@@ -59,7 +59,8 @@ dependencies = [
 
 [[package]]
 name = "mochi-protocol"
-version = "0.0.5"
+version = "0.0.6"
+source = "git+https://github.com/DavidutzDev/mochi#2675fb791d6608d2e6d1d2b04d60be65414e9bcd"
 dependencies = [
  "serde",
  "serde_json",
@@ -68,7 +69,8 @@ dependencies = [
 
 [[package]]
 name = "mochi-sdk"
-version = "0.0.5"
+version = "0.0.6"
+source = "git+https://github.com/DavidutzDev/mochi#2675fb791d6608d2e6d1d2b04d60be65414e9bcd"
 dependencies = [
  "mochi-protocol",
  "serde",

@@ -11,9 +11,7 @@ name = "chrono"
 path = "src/main.rs"
 
 [dependencies]
-# Dans votre propre dépôt distant, remplacez par :
-# mochi-sdk = { git = "https://github.com/DavidutzDev/mochi", tag = "v0.0.5" }
-mochi-sdk = { path = "/home/xo/mochi/crates/mochi-sdk" }
+mochi-sdk = { git = "https://github.com/DavidutzDev/mochi" }
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["macros", "process", "time"] }
 libc = "0.2"
