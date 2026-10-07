@@ -41,8 +41,9 @@ Item {
 
     property string stopwatchSubTab: "laps" // "laps" or "history"
 
-    implicitWidth: 800
-    implicitHeight: 380
+    implicitWidth: 832
+    implicitHeight: 480
+    height: implicitHeight
 
     focus: true
 
@@ -85,41 +86,39 @@ Item {
         }
     }
 
-    Column {
-        anchors.fill: parent
-        spacing: 12
+    // Tab bar navigation
+    Segmented {
+        id: nav
 
-        // Tab bar navigation
-        Segmented {
-            id: nav
+        anchors.top: parent.top
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: Math.min(parent.width, 420)
+        height: 38
+        color: Theme.raised
+        options: [
+            { "value": "clock", "label": "Clock", "icon": "clock" },
+            { "value": "stopwatch", "label": "Stopwatch", "icon": "bolt" },
+            { "value": "timer", "label": "Timer", "icon": "bell" }
+        ]
+        current: root.mode
+        onPicked: value => Daemon.command("chrono", "mode", [value])
+    }
 
-            anchors.horizontalCenter: parent.horizontalCenter
-            width: Math.min(parent.width, 420)
-            height: 38
-            color: Theme.raised
-            options: [
-                { "value": "clock", "label": "Clock", "icon": "clock" },
-                { "value": "stopwatch", "label": "Stopwatch", "icon": "bolt" },
-                { "value": "timer", "label": "Timer", "icon": "bell" }
-            ]
-            current: root.mode
-            onPicked: value => Daemon.command("chrono", "mode", [value])
-        }
+    // ================= CLOCK VIEW (Centered Hero & World Clocks Picker) =================
+    Item {
+        visible: root.mode === "clock"
+        anchors.top: nav.bottom
+        anchors.topMargin: 12
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        anchors.right: parent.right
 
-        // ================= CLOCK VIEW (Centered Hero & World Clocks Picker) =================
-        Item {
-            visible: root.mode === "clock"
-            width: parent.width
-            height: parent.height - nav.height - 12
-
-            Row {
-                anchors.fill: parent
-                spacing: 16
-
-                // Left Panel: Centered Hero Local Time
-                Rectangle {
-                    width: (parent.width - 16) * 0.44
-                    height: parent.height
+        // Left Panel: Centered Hero Local Time
+        Rectangle {
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: (parent.width - 16) * 0.44
                     radius: Theme.radiusLarge
                     color: Theme.surface
                     border.width: 1
@@ -232,10 +231,12 @@ Item {
                     }
                 }
 
-                // Right Panel: World Clocks with + Button & Search Picker
-                Rectangle {
-                    width: (parent.width - 16) * 0.56
-                    height: parent.height
+        // Right Panel: World Clocks with + Button & Search Picker
+        Rectangle {
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: (parent.width - 16) * 0.56
                     radius: Theme.radiusLarge
                     color: Theme.surface
                     border.width: 1
@@ -441,7 +442,6 @@ Item {
                                     visible: root.selectedCities.length === 0
                                     anchors.centerIn: parent
                                     spacing: 12
-                                    horizontalAlignment: Qt.AlignHCenter
 
                                     Symbol {
                                         anchors.horizontalCenter: parent.horizontalCenter
@@ -553,14 +553,16 @@ Item {
                         }
                     }
                 }
-            }
         }
 
         // ================= STOPWATCH VIEW (Shortcuts & History) =================
         Item {
             visible: root.mode === "stopwatch"
-            width: parent.width
-            height: parent.height - nav.height - 12
+            anchors.top: nav.bottom
+            anchors.topMargin: 12
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
 
             Row {
                 anchors.fill: parent
@@ -898,8 +900,11 @@ Item {
         // ================= TIMER VIEW (Multi-timers, Volume Control & Presets) =================
         Item {
             visible: root.mode === "timer"
-            width: parent.width
-            height: parent.height - nav.height - 12
+            anchors.top: nav.bottom
+            anchors.topMargin: 12
+            anchors.bottom: parent.bottom
+            anchors.left: parent.left
+            anchors.right: parent.right
 
             Row {
                 anchors.fill: parent
@@ -1307,5 +1312,4 @@ Item {
                 }
             }
         }
-    }
 }
