@@ -16,19 +16,28 @@ Item {
     readonly property var laps: stopwatch.laps ?? []
     readonly property var history: stopwatch.history ?? []
     readonly property var worldClocks: clock.world_clocks ?? ({})
-    readonly property var availableCities: clock.available_cities ?? [
-        { "id": "los_angeles", "city": "Los Angeles", "country": "United States" },
-        { "id": "new_york", "city": "New York", "country": "United States" },
-        { "id": "london", "city": "London", "country": "United Kingdom" },
-        { "id": "paris", "city": "Paris", "country": "France" },
-        { "id": "dubai", "city": "Dubai", "country": "United Arab Emirates" },
-        { "id": "singapore", "city": "Singapore", "country": "Singapore" },
-        { "id": "tokyo", "city": "Tokyo", "country": "Japan" },
-        { "id": "sydney", "city": "Sydney", "country": "Australia" }
-    ]
+    readonly property var availableCities: clock.available_cities ?? []
 
-    // Selected cities for World Clock (Los Angeles & Tokyo selected by default)
-    property var selectedCities: ["los_angeles", "tokyo"]
+    // Selected cities for World Clock
+    property var selectedCities: root.clock.selected_cities ?? ["paris", "tokyo", "new_york"]
+    onClockChanged: {
+        if (root.clock?.selected_cities) {
+            selectedCities = root.clock.selected_cities;
+        }
+    }
+
+    property bool isSearchingCity: false
+    property string citySearchText: ""
+
+    readonly property var filteredCities: {
+        const query = root.citySearchText.trim().toLowerCase();
+        if (!query) return root.availableCities;
+        return root.availableCities.filter(item => {
+            const c = (item.city ?? "").toLowerCase();
+            const co = (item.country ?? "").toLowerCase();
+            return c.indexOf(query) !== -1 || co.indexOf(query) !== -1;
+        });
+    }
 
     property string stopwatchSubTab: "laps" // "laps" or "history"
 
@@ -40,10 +49,12 @@ Item {
     function toggleCity(cityId) {
         const idx = selectedCities.indexOf(cityId);
         if (idx >= 0) {
+            Daemon.command("chrono", "clock_remove_city", [cityId]);
             const next = selectedCities.slice();
             next.splice(idx, 1);
             selectedCities = next;
         } else {
+            Daemon.command("chrono", "clock_add_city", [cityId]);
             selectedCities = selectedCities.concat([cityId]);
         }
     }
@@ -95,7 +106,7 @@ Item {
             onPicked: value => Daemon.command("chrono", "mode", [value])
         }
 
-        // ================= CLOCK VIEW (Selectable World Clocks) =================
+        // ================= CLOCK VIEW (Centered Hero & World Clocks Picker) =================
         Item {
             visible: root.mode === "clock"
             width: parent.width
@@ -103,201 +114,437 @@ Item {
 
             Row {
                 anchors.fill: parent
-                spacing: 18
+                spacing: 16
 
-                // Local Time & Day Progress
-                Column {
-                    width: parent.width * 0.38
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: 14
+                // Left Panel: Centered Hero Local Time
+                Rectangle {
+                    width: (parent.width - 16) * 0.44
+                    height: parent.height
+                    radius: Theme.radiusLarge
+                    color: Theme.surface
+                    border.width: 1
+                    border.color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.08)
 
                     Column {
-                        spacing: 2
+                        anchors.centerIn: parent
+                        width: parent.width - 36
+                        spacing: 18
 
-                        Text {
-                            text: root.clock.time ?? "00:00:00"
-                            color: Theme.foreground
-                            font.pixelSize: Theme.textDisplay * 1.3
-                            font.family: Theme.displayFamily
-                            font.weight: Font.Bold
-                            font.features: { "tnum": 1 }
-                        }
+                        // Local Time Badge Pill
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            height: 26
+                            radius: 13
+                            color: Theme.raised
+                            implicitWidth: localBadgeRow.implicitWidth + 20
 
-                        Text {
-                            text: root.clock.date ?? ""
-                            color: Theme.muted
-                            font.pixelSize: Theme.textSubtitle
-                            font.family: Theme.fontFamily
-                        }
-                    }
+                            Row {
+                                id: localBadgeRow
+                                anchors.centerIn: parent
+                                spacing: 6
 
-                    Rectangle {
-                        width: parent.width
-                        height: 64
-                        radius: Theme.radiusLarge
-                        color: Theme.surface
-
-                        Column {
-                            anchors.centerIn: parent
-                            spacing: 6
-                            width: parent.width - 24
-
-                            Item {
-                                width: parent.width
-                                height: 16
-
-                                Text {
-                                    anchors.left: parent.left
-                                    text: "Day elapsed"
-                                    color: Theme.muted
-                                    font.pixelSize: Theme.textCaption
-                                    font.family: Theme.fontFamily
+                                Symbol {
+                                    name: "clock"
+                                    size: 13
+                                    color: Theme.accent
+                                    anchors.verticalCenter: parent.verticalCenter
                                 }
 
                                 Text {
-                                    anchors.right: parent.right
-                                    text: `${Math.round((root.clock.day_progress ?? 0) * 100)}%`
-                                    color: Theme.accent
+                                    text: "Local Time"
+                                    color: Theme.foreground
                                     font.pixelSize: Theme.textCaption
                                     font.family: Theme.fontFamily
-                                    font.weight: Font.DemiBold
+                                    font.weight: Font.Medium
+                                    anchors.verticalCenter: parent.verticalCenter
                                 }
                             }
+                        }
 
-                            ProgressBar {
-                                width: parent.width
-                                value: root.clock.day_progress ?? 0
-                                fill: Theme.accent
+                        // Huge Digital Clock & Date
+                        Column {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            spacing: 4
+
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: root.clock.time ?? "00:00:00"
+                                color: Theme.foreground
+                                font.pixelSize: Theme.textDisplay * 1.45
+                                font.family: Theme.displayFamily
+                                font.weight: Font.Bold
+                                font.features: { "tnum": 1 }
+                            }
+
+                            Text {
+                                anchors.horizontalCenter: parent.horizontalCenter
+                                text: root.clock.date ?? ""
+                                color: Theme.muted
+                                font.pixelSize: Theme.textSubtitle
+                                font.family: Theme.fontFamily
+                            }
+                        }
+
+                        // Day Elapsed Progress Card
+                        Rectangle {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            width: parent.width
+                            height: 60
+                            radius: Theme.radiusMedium
+                            color: Theme.raised
+
+                            Column {
+                                anchors.centerIn: parent
+                                width: parent.width - 24
+                                spacing: 8
+
+                                Item {
+                                    width: parent.width
+                                    height: 16
+
+                                    Text {
+                                        anchors.left: parent.left
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: "Day elapsed"
+                                        color: Theme.muted
+                                        font.pixelSize: Theme.textCaption
+                                        font.family: Theme.fontFamily
+                                    }
+
+                                    Text {
+                                        anchors.right: parent.right
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        text: `${Math.round((root.clock.day_progress ?? 0) * 100)}%`
+                                        color: Theme.accent
+                                        font.pixelSize: Theme.textCaption
+                                        font.family: Theme.fontFamily
+                                        font.weight: Font.DemiBold
+                                    }
+                                }
+
+                                ProgressBar {
+                                    width: parent.width
+                                    value: root.clock.day_progress ?? 0
+                                    fill: Theme.accent
+                                }
                             }
                         }
                     }
                 }
 
-                // World Clocks Card with City Selector
+                // Right Panel: World Clocks with + Button & Search Picker
                 Rectangle {
-                    width: parent.width * 0.62
-                    height: parent.height - 4
-                    anchors.verticalCenter: parent.verticalCenter
+                    width: (parent.width - 16) * 0.56
+                    height: parent.height
                     radius: Theme.radiusLarge
                     color: Theme.surface
+                    border.width: 1
+                    border.color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.08)
                     clip: true
 
                     Column {
                         anchors.fill: parent
-                        anchors.margins: 12
-                        spacing: 8
+                        anchors.margins: 14
+                        spacing: 10
 
-                        Text {
-                            text: "Select World Clocks"
-                            color: Theme.foreground
-                            font.pixelSize: Theme.textBody
-                            font.family: Theme.fontFamily
-                            font.weight: Font.DemiBold
-                        }
-
-                        // City Selection Chips
-                        Flickable {
+                        // Header with Title, Count badge, and + / Done Button
+                        Item {
                             width: parent.width
                             height: 32
-                            contentWidth: chipRow.implicitWidth
-                            clip: true
-                            flickableDirection: Flickable.HorizontalFlick
 
                             Row {
-                                id: chipRow
-                                spacing: 6
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 8
 
-                                Repeater {
-                                    model: root.availableCities
+                                Text {
+                                    text: root.isSearchingCity ? "Choose Country / City" : "World Clocks"
+                                    color: Theme.foreground
+                                    font.pixelSize: Theme.textBody
+                                    font.family: Theme.fontFamily
+                                    font.weight: Font.DemiBold
+                                    anchors.verticalCenter: parent.verticalCenter
+                                }
 
-                                    Button {
-                                        readonly property bool isSelected: root.selectedCities.indexOf(modelData.id) >= 0
-                                        text: modelData.city
-                                        icon: isSelected ? "check" : "plus"
-                                        tone: isSelected ? "accent" : "raised"
-                                        onClicked: root.toggleCity(modelData.id)
+                                Rectangle {
+                                    visible: !root.isSearchingCity && root.selectedCities.length > 0
+                                    height: 20
+                                    radius: 10
+                                    color: Theme.raised
+                                    implicitWidth: cityCountText.implicitWidth + 12
+                                    anchors.verticalCenter: parent.verticalCenter
+
+                                    Text {
+                                        id: cityCountText
+                                        anchors.centerIn: parent
+                                        text: `${root.selectedCities.length}`
+                                        color: Theme.muted
+                                        font.pixelSize: Theme.textCaption
+                                        font.family: Theme.fontFamily
+                                    }
+                                }
+                            }
+
+                            Button {
+                                anchors.right: parent.right
+                                anchors.verticalCenter: parent.verticalCenter
+                                icon: root.isSearchingCity ? "close" : "plus"
+                                text: root.isSearchingCity ? "Done" : ""
+                                tone: root.isSearchingCity ? "neutral" : "accent"
+                                onClicked: {
+                                    root.isSearchingCity = !root.isSearchingCity;
+                                    if (!root.isSearchingCity) {
+                                        root.citySearchText = "";
                                     }
                                 }
                             }
                         }
 
-                        // Active World Clocks List (Model is static selectedCities array, scroll never resets!)
-                        Item {
+                        // Search Field (Visible only when searching)
+                        Rectangle {
+                            visible: root.isSearchingCity
                             width: parent.width
-                            height: parent.height - 76
+                            height: 34
+                            radius: 17
+                            color: Theme.raised
 
-                            Text {
-                                visible: root.selectedCities.length === 0
-                                anchors.centerIn: parent
-                                text: "No world clocks selected\nClick any city above to add it"
-                                horizontalAlignment: Text.AlignHCenter
+                            Symbol {
+                                id: searchIcon
+                                x: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                name: "search"
+                                size: 14
                                 color: Theme.muted
-                                font.pixelSize: Theme.textLabel
-                                font.family: Theme.fontFamily
                             }
 
-                            ListView {
-                                visible: root.selectedCities.length > 0
-                                anchors.fill: parent
+                            TextInput {
+                                id: searchInput
+                                anchors.left: searchIcon.right
+                                anchors.leftMargin: 8
+                                anchors.right: clearSearchBtn.left
+                                anchors.rightMargin: 6
+                                anchors.verticalCenter: parent.verticalCenter
+                                color: Theme.foreground
+                                selectionColor: Theme.accent
+                                font.pixelSize: Theme.textBody
+                                font.family: Theme.fontFamily
                                 clip: true
-                                spacing: 5
-                                model: root.selectedCities
+                                text: root.citySearchText
+                                onTextChanged: root.citySearchText = text
 
-                                delegate: Rectangle {
-                                    id: cityCard
+                                Text {
+                                    visible: searchInput.text === ""
+                                    text: "Search country or city (e.g. Japan, London)..."
+                                    color: Theme.muted
+                                    font: searchInput.font
+                                }
+                            }
 
-                                    readonly property var cityData: root.worldClocks[modelData] ?? ({})
+                            Button {
+                                id: clearSearchBtn
+                                visible: searchInput.text !== ""
+                                anchors.right: parent.right
+                                anchors.rightMargin: 4
+                                anchors.verticalCenter: parent.verticalCenter
+                                icon: "close"
+                                tone: "ghost"
+                                iconSize: 12
+                                implicitHeight: 26
+                                onClicked: {
+                                    searchInput.text = "";
+                                    root.citySearchText = "";
+                                }
+                            }
+                        }
 
-                                    width: parent.width
-                                    height: 40
-                                    radius: Theme.radiusSmall
-                                    color: Theme.raised
+                        // Main Content Area (Picker list OR Active clocks list)
+                        Item {
+                            width: parent.width
+                            height: parent.height - (root.isSearchingCity ? 86 : 42)
 
-                                    Item {
-                                        anchors.fill: parent
-                                        anchors.leftMargin: 12
-                                        anchors.rightMargin: 8
+                            // --- VIEW 1: Country / City Picker (When user clicked +) ---
+                            Item {
+                                visible: root.isSearchingCity
+                                anchors.fill: parent
 
-                                        Column {
-                                            anchors.left: parent.left
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            spacing: 1
+                                Text {
+                                    visible: root.filteredCities.length === 0
+                                    anchors.centerIn: parent
+                                    text: "No matching country or city found"
+                                    color: Theme.muted
+                                    font.pixelSize: Theme.textCaption
+                                    font.family: Theme.fontFamily
+                                }
 
-                                            Text {
-                                                text: cityCard.cityData.city ?? modelData
-                                                color: Theme.foreground
-                                                font.pixelSize: Theme.textBody
-                                                font.family: Theme.fontFamily
-                                                font.weight: Font.DemiBold
-                                            }
+                                ListView {
+                                    visible: root.filteredCities.length > 0
+                                    anchors.fill: parent
+                                    clip: true
+                                    spacing: 6
+                                    model: root.filteredCities
 
-                                            Text {
-                                                text: `${cityCard.cityData.offset ?? ""} · ${cityCard.cityData.date ?? ""}`
-                                                color: Theme.muted
-                                                font.pixelSize: Theme.textCaption
-                                                font.family: Theme.fontFamily
-                                            }
-                                        }
+                                    delegate: Rectangle {
+                                        id: pickerItemCard
+                                        readonly property bool isAdded: root.selectedCities.indexOf(modelData.id) >= 0
 
-                                        Row {
-                                            anchors.right: parent.right
-                                            anchors.verticalCenter: parent.verticalCenter
-                                            spacing: 8
+                                        width: parent.width
+                                        height: 44
+                                        radius: Theme.radiusSmall
+                                        color: isAdded ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.08) : Theme.raised
 
-                                            Text {
+                                        Item {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 12
+                                            anchors.rightMargin: 8
+
+                                            Column {
+                                                anchors.left: parent.left
                                                 anchors.verticalCenter: parent.verticalCenter
-                                                text: cityCard.cityData.time ?? "00:00:00"
-                                                color: Theme.accent
-                                                font.pixelSize: Theme.textTitle
-                                                font.family: Theme.displayFamily
-                                                font.weight: Font.Bold
-                                                font.features: { "tnum": 1 }
+                                                spacing: 2
+
+                                                Text {
+                                                    text: modelData.city
+                                                    color: Theme.foreground
+                                                    font.pixelSize: Theme.textBody
+                                                    font.family: Theme.fontFamily
+                                                    font.weight: Font.DemiBold
+                                                }
+
+                                                Text {
+                                                    text: modelData.country
+                                                    color: Theme.muted
+                                                    font.pixelSize: Theme.textCaption
+                                                    font.family: Theme.fontFamily
+                                                }
                                             }
 
                                             Button {
-                                                icon: "close"
-                                                tone: "ghost"
-                                                onClicked: root.toggleCity(modelData)
+                                                anchors.right: parent.right
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                text: pickerItemCard.isAdded ? "Added" : "Add"
+                                                icon: pickerItemCard.isAdded ? "check" : "plus"
+                                                tone: pickerItemCard.isAdded ? "ghost" : "accent"
+                                                onClicked: root.toggleCity(modelData.id)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            // --- VIEW 2: Selected World Clocks List (No predefined chips) ---
+                            Item {
+                                visible: !root.isSearchingCity
+                                anchors.fill: parent
+
+                                // Empty State: Centered placeholder with Add button
+                                Column {
+                                    visible: root.selectedCities.length === 0
+                                    anchors.centerIn: parent
+                                    spacing: 12
+                                    horizontalAlignment: Qt.AlignHCenter
+
+                                    Symbol {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        name: "clock"
+                                        size: 32
+                                        color: Theme.muted
+                                    }
+
+                                    Column {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        spacing: 4
+
+                                        Text {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            text: "No world clocks added"
+                                            color: Theme.foreground
+                                            font.pixelSize: Theme.textBody
+                                            font.family: Theme.fontFamily
+                                            font.weight: Font.DemiBold
+                                        }
+
+                                        Text {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            text: "Click + to choose a country or city"
+                                            color: Theme.muted
+                                            font.pixelSize: Theme.textCaption
+                                            font.family: Theme.fontFamily
+                                        }
+                                    }
+
+                                    Button {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        icon: "plus"
+                                        text: "Add Clock"
+                                        tone: "accent"
+                                        onClicked: root.isSearchingCity = true
+                                    }
+                                }
+
+                                // Populated Clocks ListView
+                                ListView {
+                                    visible: root.selectedCities.length > 0
+                                    anchors.fill: parent
+                                    clip: true
+                                    spacing: 6
+                                    model: root.selectedCities
+
+                                    delegate: Rectangle {
+                                        id: cityClockCard
+                                        readonly property var cityData: root.worldClocks[modelData] ?? ({})
+
+                                        width: parent.width
+                                        height: 48
+                                        radius: Theme.radiusMedium
+                                        color: Theme.raised
+
+                                        Item {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 12
+                                            anchors.rightMargin: 8
+
+                                            Column {
+                                                anchors.left: parent.left
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                spacing: 2
+
+                                                Text {
+                                                    text: cityClockCard.cityData.city ?? modelData
+                                                    color: Theme.foreground
+                                                    font.pixelSize: Theme.textBody
+                                                    font.family: Theme.fontFamily
+                                                    font.weight: Font.DemiBold
+                                                }
+
+                                                Text {
+                                                    text: `${cityClockCard.cityData.country ?? ""} · ${cityClockCard.cityData.offset ?? ""}`
+                                                    color: Theme.muted
+                                                    font.pixelSize: Theme.textCaption
+                                                    font.family: Theme.fontFamily
+                                                }
+                                            }
+
+                                            Row {
+                                                anchors.right: parent.right
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                spacing: 8
+
+                                                Text {
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    text: cityClockCard.cityData.time ?? "00:00:00"
+                                                    color: Theme.accent
+                                                    font.pixelSize: Theme.textHeadline
+                                                    font.family: Theme.displayFamily
+                                                    font.weight: Font.Bold
+                                                    font.features: { "tnum": 1 }
+                                                }
+
+                                                Button {
+                                                    anchors.verticalCenter: parent.verticalCenter
+                                                    icon: "close"
+                                                    tone: "ghost"
+                                                    onClicked: root.toggleCity(modelData)
+                                                }
                                             }
                                         }
                                     }

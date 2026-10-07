@@ -28,6 +28,20 @@ args = [
 ]
 
 [[actions]]
+name = "clock_add_city"
+description = "Add a city to the world clock list"
+args = [
+    { name = "city", description = "City ID to add", kind = "string", optional = false }
+]
+
+[[actions]]
+name = "clock_remove_city"
+description = "Remove a city from the world clock list"
+args = [
+    { name = "city", description = "City ID to remove", kind = "string", optional = false }
+]
+
+[[actions]]
 name = "timer_start"
 description = "Start a countdown timer with duration and optional label"
 args = [

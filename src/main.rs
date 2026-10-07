@@ -282,6 +282,7 @@ struct ChronoPlugin {
     alarm_volume: u32,
     media_playing: bool,
     active_bubble: Option<BubbleId>,
+    selected_cities: Vec<String>,
 }
 
 impl ChronoPlugin {
@@ -316,6 +317,7 @@ async fn run(mut ctx: ModuleCtx) -> Result<(), mochi_sdk::Error> {
         alarm_volume: init_volume,
         media_playing: false,
         active_bubble: None,
+        selected_cities: vec!["paris".into(), "tokyo".into(), "new_york".into()],
     };
 
     plugin.publish(&ctx);
@@ -668,6 +670,28 @@ impl ChronoPlugin {
                 self.publish(ctx);
                 command.reply(Ok(()));
             }
+            "clock_add_city" => {
+                let city_opt = command.args.str("city");
+                if let Some(c) = city_opt {
+                    if !self.selected_cities.iter().any(|x| x == c) {
+                        self.selected_cities.push(c.to_string());
+                    }
+                    self.publish(ctx);
+                    command.reply(Ok(()));
+                } else {
+                    command.reply(Err("city argument required".into()));
+                }
+            }
+            "clock_remove_city" => {
+                let city_opt = command.args.str("city");
+                if let Some(c) = city_opt {
+                    self.selected_cities.retain(|x| x != c);
+                    self.publish(ctx);
+                    command.reply(Ok(()));
+                } else {
+                    command.reply(Err("city argument required".into()));
+                }
+            }
             other => command.reply(Err(format!("unknown action: {other}"))),
         }
     }
@@ -849,6 +873,7 @@ impl ChronoPlugin {
                 "day_progress": ((h * 3600 + m * 60 + s) as f64) / 86400.0,
                 "world_clocks": json!(world_clocks_map),
                 "available_cities": available_cities,
+                "selected_cities": self.selected_cities,
             },
             "stopwatch": {
                 "running": self.stopwatch.running,
@@ -922,54 +947,76 @@ struct CityDef {
 }
 
 const WORLD_CITIES: &[CityDef] = &[
-    CityDef {
-        id: "los_angeles",
-        city: "Los Angeles",
-        country: "United States",
-        timezone: "America/Los_Angeles",
-    },
-    CityDef {
-        id: "new_york",
-        city: "New York",
-        country: "United States",
-        timezone: "America/New_York",
-    },
-    CityDef {
-        id: "london",
-        city: "London",
-        country: "United Kingdom",
-        timezone: "Europe/London",
-    },
-    CityDef {
-        id: "paris",
-        city: "Paris",
-        country: "France",
-        timezone: "Europe/Paris",
-    },
-    CityDef {
-        id: "dubai",
-        city: "Dubai",
-        country: "United Arab Emirates",
-        timezone: "Asia/Dubai",
-    },
-    CityDef {
-        id: "singapore",
-        city: "Singapore",
-        country: "Singapore",
-        timezone: "Asia/Singapore",
-    },
-    CityDef {
-        id: "tokyo",
-        city: "Tokyo",
-        country: "Japan",
-        timezone: "Asia/Tokyo",
-    },
-    CityDef {
-        id: "sydney",
-        city: "Sydney",
-        country: "Australia",
-        timezone: "Australia/Sydney",
-    },
+    // Americas
+    CityDef { id: "new_york", city: "New York", country: "United States", timezone: "America/New_York" },
+    CityDef { id: "los_angeles", city: "Los Angeles", country: "United States", timezone: "America/Los_Angeles" },
+    CityDef { id: "chicago", city: "Chicago", country: "United States", timezone: "America/Chicago" },
+    CityDef { id: "san_francisco", city: "San Francisco", country: "United States", timezone: "America/Los_Angeles" },
+    CityDef { id: "toronto", city: "Toronto", country: "Canada", timezone: "America/Toronto" },
+    CityDef { id: "vancouver", city: "Vancouver", country: "Canada", timezone: "America/Vancouver" },
+    CityDef { id: "montreal", city: "Montreal", country: "Canada", timezone: "America/Toronto" },
+    CityDef { id: "mexico_city", city: "Mexico City", country: "Mexico", timezone: "America/Mexico_City" },
+    CityDef { id: "sao_paulo", city: "São Paulo", country: "Brazil", timezone: "America/Sao_Paulo" },
+    CityDef { id: "buenos_aires", city: "Buenos Aires", country: "Argentina", timezone: "America/Argentina/Buenos_Aires" },
+    CityDef { id: "santiago", city: "Santiago", country: "Chile", timezone: "America/Santiago" },
+    CityDef { id: "bogota", city: "Bogotá", country: "Colombia", timezone: "America/Bogota" },
+    CityDef { id: "lima", city: "Lima", country: "Peru", timezone: "America/Lima" },
+
+    // Europe
+    CityDef { id: "london", city: "London", country: "United Kingdom", timezone: "Europe/London" },
+    CityDef { id: "paris", city: "Paris", country: "France", timezone: "Europe/Paris" },
+    CityDef { id: "berlin", city: "Berlin", country: "Germany", timezone: "Europe/Berlin" },
+    CityDef { id: "rome", city: "Rome", country: "Italy", timezone: "Europe/Rome" },
+    CityDef { id: "madrid", city: "Madrid", country: "Spain", timezone: "Europe/Madrid" },
+    CityDef { id: "amsterdam", city: "Amsterdam", country: "Netherlands", timezone: "Europe/Amsterdam" },
+    CityDef { id: "brussels", city: "Brussels", country: "Belgium", timezone: "Europe/Brussels" },
+    CityDef { id: "zurich", city: "Zurich", country: "Switzerland", timezone: "Europe/Zurich" },
+    CityDef { id: "vienna", city: "Vienna", country: "Austria", timezone: "Europe/Vienna" },
+    CityDef { id: "stockholm", city: "Stockholm", country: "Sweden", timezone: "Europe/Stockholm" },
+    CityDef { id: "oslo", city: "Oslo", country: "Norway", timezone: "Europe/Oslo" },
+    CityDef { id: "copenhagen", city: "Copenhagen", country: "Denmark", timezone: "Europe/Copenhagen" },
+    CityDef { id: "helsinki", city: "Helsinki", country: "Finland", timezone: "Europe/Helsinki" },
+    CityDef { id: "warsaw", city: "Warsaw", country: "Poland", timezone: "Europe/Warsaw" },
+    CityDef { id: "prague", city: "Prague", country: "Czech Republic", timezone: "Europe/Prague" },
+    CityDef { id: "athens", city: "Athens", country: "Greece", timezone: "Europe/Athens" },
+    CityDef { id: "dublin", city: "Dublin", country: "Ireland", timezone: "Europe/Dublin" },
+    CityDef { id: "lisbon", city: "Lisbon", country: "Portugal", timezone: "Europe/Lisbon" },
+    CityDef { id: "istanbul", city: "Istanbul", country: "Turkey", timezone: "Europe/Istanbul" },
+    CityDef { id: "kyiv", city: "Kyiv", country: "Ukraine", timezone: "Europe/Kyiv" },
+    CityDef { id: "moscow", city: "Moscow", country: "Russia", timezone: "Europe/Moscow" },
+
+    // Asia & Middle East
+    CityDef { id: "tokyo", city: "Tokyo", country: "Japan", timezone: "Asia/Tokyo" },
+    CityDef { id: "seoul", city: "Seoul", country: "South Korea", timezone: "Asia/Seoul" },
+    CityDef { id: "beijing", city: "Beijing", country: "China", timezone: "Asia/Shanghai" },
+    CityDef { id: "hong_kong", city: "Hong Kong", country: "Hong Kong", timezone: "Asia/Hong_Kong" },
+    CityDef { id: "taipei", city: "Taipei", country: "Taiwan", timezone: "Asia/Taipei" },
+    CityDef { id: "singapore", city: "Singapore", country: "Singapore", timezone: "Asia/Singapore" },
+    CityDef { id: "bangkok", city: "Bangkok", country: "Thailand", timezone: "Asia/Bangkok" },
+    CityDef { id: "hanoi", city: "Hanoi", country: "Vietnam", timezone: "Asia/Bangkok" },
+    CityDef { id: "jakarta", city: "Jakarta", country: "Indonesia", timezone: "Asia/Jakarta" },
+    CityDef { id: "kuala_lumpur", city: "Kuala Lumpur", country: "Malaysia", timezone: "Asia/Kuala_Lumpur" },
+    CityDef { id: "manila", city: "Manila", country: "Philippines", timezone: "Asia/Manila" },
+    CityDef { id: "mumbai", city: "Mumbai", country: "India", timezone: "Asia/Kolkata" },
+    CityDef { id: "dubai", city: "Dubai", country: "United Arab Emirates", timezone: "Asia/Dubai" },
+    CityDef { id: "doha", city: "Doha", country: "Qatar", timezone: "Asia/Qatar" },
+    CityDef { id: "riyadh", city: "Riyadh", country: "Saudi Arabia", timezone: "Asia/Riyadh" },
+    CityDef { id: "jerusalem", city: "Jerusalem", country: "Israel", timezone: "Asia/Jerusalem" },
+
+    // Africa
+    CityDef { id: "cairo", city: "Cairo", country: "Egypt", timezone: "Africa/Cairo" },
+    CityDef { id: "johannesburg", city: "Johannesburg", country: "South Africa", timezone: "Africa/Johannesburg" },
+    CityDef { id: "casablanca", city: "Casablanca", country: "Morocco", timezone: "Africa/Casablanca" },
+    CityDef { id: "nairobi", city: "Nairobi", country: "Kenya", timezone: "Africa/Nairobi" },
+    CityDef { id: "lagos", city: "Lagos", country: "Nigeria", timezone: "Africa/Lagos" },
+
+    // Oceania & Pacific
+    CityDef { id: "sydney", city: "Sydney", country: "Australia", timezone: "Australia/Sydney" },
+    CityDef { id: "melbourne", city: "Melbourne", country: "Australia", timezone: "Australia/Melbourne" },
+    CityDef { id: "brisbane", city: "Brisbane", country: "Australia", timezone: "Australia/Brisbane" },
+    CityDef { id: "perth", city: "Perth", country: "Australia", timezone: "Australia/Perth" },
+    CityDef { id: "auckland", city: "Auckland", country: "New Zealand", timezone: "Pacific/Auckland" },
+    CityDef { id: "honolulu", city: "Honolulu", country: "United States (Hawaii)", timezone: "Pacific/Honolulu" },
 ];
 
 unsafe extern "C" {
