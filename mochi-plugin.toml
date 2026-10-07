@@ -3,7 +3,7 @@ id = "chrono"
 name = "Clock"
 version = "0.2.0"
 description = "All-in-one clock, stopwatch, and timer for Mochi"
-authors = ["xo"]
+authors = ["Xonex5"]
 api = 1
 
 [backend]

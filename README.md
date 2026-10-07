@@ -1,6 +1,8 @@
-# Chrono
+# Clock for Mochi
 
-All-in-one clock, stopwatch, and timer plugin for Mochi.
+All-in-one clock, stopwatch, and timer plugin for [Mochi](https://github.com/DavidutzDev/mochi).
+
+Created by [Xonex5](https://github.com/Xonex5).
 
 ## Features
 
@@ -12,7 +14,35 @@ All-in-one clock, stopwatch, and timer plugin for Mochi.
 - Media sync: Automatically pauses active media playback when a timer completes.
 - Launcher provider: Quick timer creation and stopwatch controls with `:t <duration> [label]`.
 - Global keybindings: Control stopwatch in any application or game via Hyprland shortcuts.
-- Dynamic Island: Compact bubble showing progress and time, expanding into full controls on click.
+## Installation
+
+Clone into your Mochi plugins directory:
+
+```sh
+git clone https://github.com/Xonex5/mochi-clock.git ~/.config/mochi/plugins/clock
+```
+
+In `~/.config/mochi/plugins.toml`:
+
+```toml
+[plugins.chrono]
+source = "path:plugins/clock"
+```
+
+In `~/.config/mochi/config.toml`, add `"chrono"` to `modules`:
+
+```toml
+modules = [
+    # ...
+    "chrono",
+]
+```
+
+Then reload Mochi:
+
+```sh
+mochi reload
+```
 
 ## Global keybindings
 
