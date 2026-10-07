@@ -664,77 +664,179 @@ Item {
                     Rectangle {
                         anchors.horizontalCenter: parent.horizontalCenter
                         width: parent.width
-                        implicitHeight: shortcutsCol.implicitHeight + 16
                         radius: Theme.radiusMedium
                         color: Theme.raised
+                        implicitHeight: shortcutsCol.implicitHeight + 20
 
                         Column {
                             id: shortcutsCol
-                            width: parent.width - 16
+                            width: parent.width - 24
                             anchors.centerIn: parent
-                            spacing: 6
+                            spacing: 8
 
-                            // In-App Shortcuts
-                            Row {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                spacing: 6
+                            // Header with column labels
+                            Item {
+                                width: parent.width
+                                height: 16
 
                                 Text {
-                                    text: "In-App:"
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Shortcuts"
                                     color: Theme.muted
                                     font.pixelSize: Theme.textCaption
                                     font.family: Theme.fontFamily
-                                    anchors.verticalCenter: parent.verticalCenter
+                                    font.weight: Font.DemiBold
                                 }
 
-                                Kbd { key: "Space"; anchors.verticalCenter: parent.verticalCenter }
-                                Text { text: "Toggle"; color: Theme.muted; font.pixelSize: Theme.textCaption; anchors.verticalCenter: parent.verticalCenter }
+                                Row {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 16
 
-                                Text { text: "·"; color: Theme.muted; anchors.verticalCenter: parent.verticalCenter }
+                                    Text {
+                                        text: "In-App"
+                                        color: Theme.muted
+                                        font.pixelSize: Theme.textCaption
+                                        font.family: Theme.fontFamily
+                                        width: 50
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
 
-                                Kbd { key: "L"; anchors.verticalCenter: parent.verticalCenter }
-                                Text { text: "Lap"; color: Theme.muted; font.pixelSize: Theme.textCaption; anchors.verticalCenter: parent.verticalCenter }
-
-                                Text { text: "·"; color: Theme.muted; anchors.verticalCenter: parent.verticalCenter }
-
-                                Kbd { key: "R"; anchors.verticalCenter: parent.verticalCenter }
-                                Text { text: "Reset"; color: Theme.muted; font.pixelSize: Theme.textCaption; anchors.verticalCenter: parent.verticalCenter }
+                                    Text {
+                                        text: "Global"
+                                        color: Theme.muted
+                                        font.pixelSize: Theme.textCaption
+                                        font.family: Theme.fontFamily
+                                        width: 100
+                                        horizontalAlignment: Text.AlignHCenter
+                                    }
+                                }
                             }
 
                             Rectangle {
                                 width: parent.width
                                 height: 1
-                                color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.05)
+                                color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.06)
                             }
 
-                            // Global In-Game / System-wide Shortcuts (Hyprland)
-                            Row {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                spacing: 8
+                            // Row 1: Start / Pause
+                            Item {
+                                width: parent.width
+                                height: 22
 
-                                Row {
-                                    spacing: 4
+                                Text {
+                                    anchors.left: parent.left
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Kbd { key: "Super+K"; textColor: Theme.accent }
-                                    Text { text: "Pause"; color: Theme.muted; font.pixelSize: Theme.textCaption; anchors.verticalCenter: parent.verticalCenter }
+                                    text: "Start / Pause"
+                                    color: Theme.foreground
+                                    font.pixelSize: Theme.textCaption
+                                    font.family: Theme.fontFamily
                                 }
 
-                                Text { text: "·"; color: Theme.muted; anchors.verticalCenter: parent.verticalCenter }
-
                                 Row {
-                                    spacing: 4
+                                    anchors.right: parent.right
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Kbd { key: "Super+Shift+K"; textColor: Theme.accent }
-                                    Text { text: "Lap"; color: Theme.muted; font.pixelSize: Theme.textCaption; anchors.verticalCenter: parent.verticalCenter }
+                                    spacing: 16
+
+                                    Item {
+                                        width: 50
+                                        height: 20
+                                        Kbd {
+                                            anchors.centerIn: parent
+                                            key: "Space"
+                                        }
+                                    }
+
+                                    Item {
+                                        width: 100
+                                        height: 20
+                                        Kbd {
+                                            anchors.centerIn: parent
+                                            key: "Super+K"
+                                            textColor: Theme.accent
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Row 2: Record Lap
+                            Item {
+                                width: parent.width
+                                height: 22
+
+                                Text {
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Record lap"
+                                    color: Theme.foreground
+                                    font.pixelSize: Theme.textCaption
+                                    font.family: Theme.fontFamily
                                 }
 
-                                Text { text: "·"; color: Theme.muted; anchors.verticalCenter: parent.verticalCenter }
+                                Row {
+                                    anchors.right: parent.right
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: 16
+
+                                    Item {
+                                        width: 50
+                                        height: 20
+                                        Kbd {
+                                            anchors.centerIn: parent
+                                            key: "L"
+                                        }
+                                    }
+
+                                    Item {
+                                        width: 100
+                                        height: 20
+                                        Kbd {
+                                            anchors.centerIn: parent
+                                            key: "Super+Shift+K"
+                                            textColor: Theme.accent
+                                        }
+                                    }
+                                }
+                            }
+
+                            // Row 3: Reset
+                            Item {
+                                width: parent.width
+                                height: 22
+
+                                Text {
+                                    anchors.left: parent.left
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: "Reset"
+                                    color: Theme.foreground
+                                    font.pixelSize: Theme.textCaption
+                                    font.family: Theme.fontFamily
+                                }
 
                                 Row {
-                                    spacing: 4
+                                    anchors.right: parent.right
                                     anchors.verticalCenter: parent.verticalCenter
-                                    Kbd { key: "Super+Ctrl+R"; textColor: Theme.danger }
-                                    Text { text: "Reset"; color: Theme.muted; font.pixelSize: Theme.textCaption; anchors.verticalCenter: parent.verticalCenter }
+                                    spacing: 16
+
+                                    Item {
+                                        width: 50
+                                        height: 20
+                                        Kbd {
+                                            anchors.centerIn: parent
+                                            key: "R"
+                                        }
+                                    }
+
+                                    Item {
+                                        width: 100
+                                        height: 20
+                                        Kbd {
+                                            anchors.centerIn: parent
+                                            key: "Super+Ctrl+R"
+                                            textColor: Theme.danger
+                                        }
+                                    }
                                 }
                             }
                         }
